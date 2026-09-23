@@ -4,10 +4,10 @@ export default function Page() {
   return (
     <main>
       <header className="page-header">
-        <p className="eyebrow">나의 대운, 나의 시간</p>
-        <h1>인생의 흐름을 한눈에 살펴보세요.</h1>
+        <p className="eyebrow">나의 사주 기록</p>
+        <h1>나를 알고,<br/>다음 시간을 그리다.</h1>
         <p className="intro">
-          나에게 맞는 대운을 따라 지나온 시간과 지금, 앞으로의 시간을 이어서 볼 수 있습니다.
+          한눈에 보는 만세력과 쉬운 말로 풀어낸 상담.<br/>지나온 경험과 앞으로의 선택을 차근차근 살펴보세요.
         </p>
       </header>
       <SajuForm />

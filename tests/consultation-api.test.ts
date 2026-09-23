@@ -9,8 +9,8 @@ import { CHAPTERS } from "../lib/saju/consultation";
 
 const input = { date: "1994-12-01", time: "08:37", calendar: "solar", topic: "general", birthplace: { countryCode: "KR", countryName: "대한민국", city: "개인도시", timezone: "Asia/Seoul", longitude: 126.978 } };
 const body = { consent: true, input, yunGender: 0, fortuneYear: 2026, chapterId: "natal" };
-const valid = () => ({ id: "natal", title: CHAPTERS[0].title, sections: Array.from({ length: 3 }, (_, i) => ({
-  heading: `${i}번째 구체적 근거`, text: `${i}번째 절은 개인 원국의 근거들을 함께 살펴보며 도움을 받는 조건과 부담이 생기는 조건을 현실의 경험과 연결해서 설명합니다. `.repeat(4),
+const valid = () => ({ id: "natal", title: CHAPTERS[0].title, summary: "도움받을 일과 혼자 결정할 일을 나누고 실제로 편했던 상황과 어려웠던 상황을 비교해 보세요.", sections: Array.from({ length: 3 }, (_, i) => ({
+  heading: `${i}번째 구체적 근거`, text: `${i}번째 절은 개인 원국의 근거들을 함께 살펴보며 도움을 받는 조건과 부담이 생기는 조건을 현실의 경험과 연결해서 설명합니다. `.repeat(3) + "\n\n" + "어떤 상황에서 이러한 차이가 생겼는지 실제 기억을 확인해 보세요. 맡은 일을 나누어도 결정할 권한이 충분했는지, 도움을 받으면서 상대의 기대를 따라야 했는지에 따라 선택 기준이 달라질 수 있습니다. ".repeat(2),
   evidenceIds: ["strength_season", "strength_ratio"],
   counterpoint: "반대 조건으로는 월지의 가중치가 달라질 때 해석의 경계가 달라진다는 점을 함께 검토해야 합니다.",
   example: "예를 들어 다른 사람과 함께 역할을 나누는 상황이라면 결정 권한의 범위를 확인하는 장면으로 살펴볼 수 있습니다.",
@@ -64,18 +64,36 @@ test("상담 API는 계산을 서버에서 다시 만들고 원래 출생 입력
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   const result = await response.json();
   assert.equal(result.analysisVersion, 1);
+  assert.equal(result.readingStyleVersion, 2);
   assert.equal(result.year, 2026);
   assert.equal(result.chapter.id, "natal");
   assert.equal(api.calls[0].model, "gemini-3.5-flash-lite");
   for (const secret of [input.date, input.time, input.birthplace.city, input.birthplace.timezone, "전송하면 안 되는 사용자 근거"]) assert.ok(!api.calls[0].contents.includes(secret), secret);
 });
 
+test("새 상담 API는 요약 없는 예전 형식의 모델 응답을 그대로 성공 처리하지 않는다", async () => {
+  const { summary: _summary, ...legacy } = valid();
+  const recovered = apiHarness([legacy, valid()]);
+  const response = await recovered.request(body);
+  assert.equal(response.status, 200);
+  assert.equal(recovered.calls.length, 2);
+  assert.ok((await response.json()).chapter.summary.length >= 30);
+  const rejected = apiHarness([legacy, legacy]);
+  assert.equal((await rejected.request(body)).status, 502);
+  assert.equal(rejected.calls.length, 2);
+});
+
 test("부실한 상담 응답은 정확히 한 번 수정 재시도하고 성공 시에만 표시한다", async () => {
-  const api = apiHarness([{ ...valid(), sections: [] }, valid()]);
+  const draft = { ...valid(), sections: [] };
+  const api = apiHarness([draft, valid()]);
   const response = await api.request(body);
   assert.equal(response.status, 200);
   assert.equal(api.calls.length, 2);
   assert.match(api.calls[1].contents, /직전 응답 검증 오류/);
+  assert.ok(api.calls[1].contents.includes(JSON.stringify(draft)), "편집 요청에 고칠 초안이 포함된다");
+  assert.ok(api.calls[1].contents.includes("strength_ratio"), "편집 때도 계산으로 확인된 근거를 제공한다");
+  assert.ok(!api.calls[1].contents.includes(api.calls[0].contents), "긴 최초 작성 프롬프트를 그대로 반복하지 않는다");
+  for (const secret of [input.date, input.time, input.birthplace.city, input.birthplace.timezone]) assert.ok(!api.calls[1].contents.includes(secret), secret);
   const failed = apiHarness([{}, {}]);
   const rejected = await failed.request(body);
   assert.equal(rejected.status, 502);

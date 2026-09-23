@@ -4,7 +4,7 @@ import { calculate, type SajuInput } from "../lib/saju/chart";
 import { calculateDaewoon } from "../lib/saju/daewoon";
 import { calculateBenefactors } from "../lib/saju/benefactors";
 import { createGeminiReadingContext } from "../lib/saju/gemini-reading";
-import { CHAPTERS, consultationFacts, consultationPrompt, consultationSchema, validateChapter, validateConsultation, type ChapterId, type Consultation, type ConsultationChapter } from "../lib/saju/consultation";
+import { CHAPTERS, consultationFacts, consultationPrompt, consultationSchema, validateChapter, validatePlainChapter, validateConsultation, type ChapterId, type Consultation, type ConsultationChapter } from "../lib/saju/consultation";
 import { isSavedSajuResult, readSavedSajuResult, writeSavedSajuResult, type SavedSajuResult } from "../lib/saju/persistence";
 import { resultFingerprint, validateCloudPayload, type CloudPayload } from "../lib/account/results";
 
@@ -29,6 +29,13 @@ function chapter(id: ChapterId = "natal"): ConsultationChapter {
   };
 }
 function consultation(chapters: ConsultationChapter[] = [chapter()]): Consultation { return { version: 1, analysisVersion: 1, year: 2026, chapters }; }
+function plainChapter(id: ChapterId = "natal"): ConsultationChapter {
+  const value = chapter(id);
+  return { ...value, summary: "자신이 결정할 일과 다른 사람에게 도움받을 일을 나누면, 어떤 환경이 맞는지 비교하기 쉽습니다.", sections: value.sections.map(section => ({
+    ...section,
+    text: "다른 사람에게 도움을 받더라도 자신이 결정할 수 있는 일이 남아 있어야 편할 수 있습니다.\n\n" + section.text + "이 판단은 정해진 성격을 뜻하는 것이 아닙니다. 앞서 살펴본 서로 다른 조건을 실제로 경험한 사례와 나란히 적어보고, 어느 상황에서 자신의 권한과 지원이 충분했는지 구분해 보세요.",
+  })) };
+}
 function saved(extra: Partial<SavedSajuResult> = {}): SavedSajuResult {
   return { version: 1, savedAt: "2026-09-23T05:00:00Z", input, yunGender: 0, chart, timeline, benefactors, reading: null, ...extra };
 }
@@ -124,4 +131,89 @@ test("기존 reading이 null이어도 손상된 상담은 로컬 저장 검증�
     assert.equal(isSavedSajuResult(entry), false);
     assert.equal(writeSavedSajuResult(entry as SavedSajuResult, memory()), false);
   }
+});
+
+test("쉬운 상담 장은 충분한 요약과 기존 상세 근거를 모두 갖춰야 한다", () => {
+  for (const length of [30, 180]) {
+    const value = { ...plainChapter(), summary: "가".repeat(length) };
+    assert.equal(validatePlainChapter(value, "natal", validIds), value);
+  }
+  for (const summary of [undefined, null, 42, "", " ".repeat(40), "가".repeat(29), "가".repeat(181)]) {
+    assert.throws(() => validatePlainChapter({ ...plainChapter(), summary }, "natal", validIds));
+  }
+  const readable = plainChapter();
+  assert.throws(() => validatePlainChapter({ ...readable, sections: [] }, "natal", validIds));
+  assert.throws(() => validatePlainChapter({ ...readable, sections: [{ ...readable.sections[0], evidenceIds: ["invented_a", "invented_b"] }, ...readable.sections.slice(1)] }, "natal", validIds));
+});
+
+test("쉬운 상담 버전만 요약을 강제하고 이전 상담의 제목·내용을 그대로 읽는다", () => {
+  const legacy = consultation([chapter(), chapter("strength")]);
+  assert.equal(validateConsultation(legacy, validIds), legacy);
+  const readable = { ...legacy, readingStyleVersion: 2, chapters: legacy.chapters.map(ch => plainChapter(ch.id)) };
+  assert.equal(validateConsultation(readable, validIds), readable);
+  assert.throws(() => validateConsultation({ ...legacy, readingStyleVersion: 2 }, validIds));
+  for (const readingStyleVersion of [0, 1, 3, "2", null]) assert.throws(() => validateConsultation({ ...readable, readingStyleVersion }, validIds));
+});
+
+test("새 상담의 요약과 버전은 로컬·계정 저장에서 보존하고 손상된 요약은 저장하지 않는다", async () => {
+  const target = memory();
+  const readable: Consultation = { ...consultation(), readingStyleVersion: 2, chapters: [plainChapter()] };
+  const value = saved({ consultation: readable });
+  assert.equal(writeSavedSajuResult(value, target), true);
+  assert.deepEqual(readSavedSajuResult(target)?.consultation, readable);
+  const cloud: CloudPayload = { version: 1, fortuneYear: 2026, result: value };
+  assert.equal(validateCloudPayload(cloud), cloud);
+  const legacy = { ...cloud, result: saved({ consultation: consultation() }) };
+  assert.notEqual(await resultFingerprint(cloud, "가상 상담"), await resultFingerprint(legacy, "가상 상담"));
+  const broken = saved({ consultation: { ...readable, chapters: [chapter()] } });
+  assert.equal(isSavedSajuResult(broken), false);
+  assert.equal(writeSavedSajuResult(broken, target), false);
+  assert.deepEqual(readSavedSajuResult(target)?.consultation, readable);
+});
+
+test("쉬운 상담은 280자와 두 문단을 함께 요구하고 예전 160자 한 문단은 계속 복원한다", () => {
+  const readable = plainChapter();
+  const withText = (text: string) => ({ ...readable, sections: [{ ...readable.sections[0], text }, ...readable.sections.slice(1)] });
+  assert.throws(() => validatePlainChapter(withText("가".repeat(138) + "\n\n" + "나".repeat(139)), "natal", validIds), "279자는 두 문단이어도 거부");
+  assert.throws(() => validatePlainChapter(withText("가".repeat(400)), "natal", validIds), "충분히 길어도 한 문단이면 거부");
+  assert.throws(() => validatePlainChapter(withText("가".repeat(280) + "\n\n   "), "natal", validIds), "빈 문단은 세지 않음");
+  const boundary = withText("가".repeat(139) + "\n\n" + "나".repeat(139));
+  assert.equal(validatePlainChapter(boundary, "natal", validIds), boundary);
+  const legacy = withText("가".repeat(160));
+  delete legacy.summary;
+  assert.equal(validateChapter(legacy, "natal", validIds), legacy);
+  const result = saved({ consultation: consultation([legacy]) });
+  assert.equal(isSavedSajuResult(result), true);
+  const storage = memory();
+  assert.equal(writeSavedSajuResult(result, storage), true);
+  assert.equal(readSavedSajuResult(storage)?.consultation?.chapters[0].sections[0].text.length, 160);
+});
+
+test("새 상담 요약과 첫 문장은 쉬운 생활말을 요구하되 이후 설명의 명리 근거와 이전 상담은 허용한다", () => {
+  const value = plainChapter();
+  for (const summary of [
+    "일간과 월지를 바탕으로 자신에게 잘 맞는 환경을 정하고 주변 도움을 받을 기준을 세워보세요.",
+    "甲과 木의 관계를 바탕으로 자신에게 잘 맞는 환경을 정하고 주변 도움을 받을 기준을 세워보세요.",
+    "자신의 에너지가 약해지지 않도록 맡은 일을 나누고 다른 사람에게 도움받을 기준을 세워보세요.",
+  ]) assert.throws(() => validatePlainChapter({ ...value, summary }, "natal", validIds), summary);
+  for (const summary of [
+    "도움을 받을 때도 결정할 권한이 남아 있어야 편할 수 있어, 누가 어떤 일을 맡는지 먼저 살펴봅니다.",
+    "다른 사람에게 맡길 일과 직접 결정할 일을 나누면, 불필요한 책임이 늘어나는 일을 줄이며 부담을 다룹니다.",
+    "함께 일할 때도 자신의 선택을 지지받는 조건이 중요해, 도움을 받았던 때와 혼자 맡았던 때를 비교합니다.",
+    "책임을 나눌 때 결정할 권한까지 넘기면 답답할 수 있어, 역할을 정하기 전에 합의할 조건을 확인합니다.",
+  ]) {
+    const readable = { ...value, summary };
+    assert.equal(validatePlainChapter(readable, "natal", validIds), readable, "생활 요약을 문장 끝 동사만으로 거부하지 않는다");
+  }
+  for (const opening of ["일간과 월지가 영향을 줍니다.", "용신을 고려해야 합니다.", "甲이 중심입니다."]) {
+    const sections = [{ ...value.sections[0], text: opening + "\n\n" + value.sections[0].text }, ...value.sections.slice(1)];
+    assert.throws(() => validatePlainChapter({ ...value, sections }, "natal", validIds), opening);
+    const legacy = { ...chapter(), sections };
+    assert.equal(validateChapter(legacy, "natal", validIds), legacy);
+  }
+  assert.ok(value.sections[0].text.includes("월지"), "전문 근거는 두 번째 문단에 유지");
+  assert.equal(validatePlainChapter(value, "natal", validIds), value);
+  const legacySummary = { ...chapter(), summary: "일간과 월지를 바탕으로 하는 에너지 흐름과 주변 도움의 조건을 살펴봅니다." };
+  assert.equal(validateChapter(legacySummary, "natal", validIds), legacySummary);
+  assert.equal(isSavedSajuResult(saved({ consultation: consultation([legacySummary]) })), true);
 });

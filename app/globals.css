@@ -1,13 +1,16 @@
 :root {
-  --background: #f8f7f3;
+  --background: #f7f5f1;
   --surface: #ffffff;
-  --text: #202c30;
-  --muted: #4c5a5d;
-  --border: #d8dfdc;
-  --focus: #206a62;
-  --primary: #185b53;
-  --soft: #eef2ee;
+  --text: #34312d;
+  --muted: #67615a;
+  --border: #d8d2c9;
+  --focus: #805b38;
+  --primary: #55483b;
+  --soft: #f0ede7;
   --error: #b91c1c;
+  --element-목: #8fb8b2; --element-화: #eab0a6; --element-토: #e9c675; --element-금: #b7b5ae; --element-수: #8c9eb5;
+  --ink-목: #315b56; --ink-화: #913d36; --ink-토: #78571b; --ink-금: #59554d; --ink-수: #405574;
+  --god-0: #414751; --god-1: #626c78; --god-2: #8a949f; --god-3: #b3b9c0; --god-4: #d4d8dc;
 }
 
 * {
@@ -809,3 +812,126 @@ select:focus-visible {
 .consultation-aside strong, .consultation-question strong { display: block; margin-bottom: 6px; color: var(--primary); }
 .consultation-panel summary:focus-visible, .consultation-toc a:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 @media(max-width:600px) { .consultation-toc { grid-template-columns: 1fr; } .consultation-aside, .consultation-question { padding: 12px 14px; } }
+
+/* 만세력 보고서: 넓은 여백, 한글 우선, 계산 자료의 단계별 펼침 */
+main { width: min(100%, 980px); }
+h1 { line-height: 1.3; font-family: Georgia, "Batang", serif; font-weight: 500; }
+.page-header { padding: 24px 24px 52px; }
+.intro { font-size: 17px; }
+.result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel, .deep-analysis, .consultation-panel, .flow-overview { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; margin-top: 28px; min-width: 0; }
+.result h2.day-pillar { font-family: Georgia, "Batang", serif; }
+h3 small { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 6px; }
+p { word-break: keep-all; overflow-wrap: anywhere; }
+summary { cursor: pointer; min-height: 44px; padding: 12px 0; line-height: 1.6; }
+summary:hover { color: var(--primary); }
+button, a, summary { touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+[id] { scroll-margin-top: 24px; }
+.report-nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 0 24px; }
+.report-nav a { padding: 10px 14px; min-height: 44px; background: var(--soft); border: 1px solid var(--border); color: var(--primary); border-radius: 30px; text-decoration: none; font-size: 14px; }
+.report-nav a:hover { background: var(--border); }
+.manse-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+.manse-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 460px; text-align: center; }
+.manse-table caption { padding: 16px; font-size: 14px; color: var(--muted); text-align: left; }
+.manse-table th, .manse-table td { padding: 12px 8px; border-top: 1px solid var(--border); border-right: 1px solid var(--border); line-height: 1.6; }
+.manse-table tr > :last-child { border-right: 0; }
+.manse-table th:first-child { width: 75px; font-size: 13px; font-weight: 500; }
+.manse-table thead { background: #f5f2ed; }
+.manse-table thead small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.manse-table .my-pillar { background: #fcf6e8; }
+.manse-character { color: var(--ink); padding: 4px 0; }
+.manse-character strong { font-size: 30px; font-weight: 700; white-space: nowrap; }
+.manse-character strong span { font-family: serif; font-size: 23px; margin-left: 4px; }
+.manse-character small { display: block; font-size: 13px; }
+.hidden-stem { display: inline-block; font-size: 13px; margin-right: 5px; }
+.manse-stars { font-size: 13px; }
+.manse-benefactors { padding: 18px 0; }
+.star-chips { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.star-chips details { border: 1px solid var(--border); border-radius: 10px; padding: 0 14px; }
+.star-chips summary { font-weight: 600; }
+.star-chips summary span { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+.manse-elements { border-top: 1px solid var(--border); padding-top: 28px; }
+.manse-elements h3 { font-size: 26px; margin: 10px 0; }
+.distribution-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.distribution-grid > article { border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.distribution-grid h4 { text-align: center; margin-top: 0; font-size: 17px; }
+.distribution-ring { width: 180px; height: 180px; margin: 24px auto; border-radius: 50%; display: grid; place-items: center; }
+.distribution-ring > span { width: 132px; height: 132px; border-radius: 50%; background: white; display: grid; place-items: center; font-size: 22px; font-weight: 600; }
+.distribution-list { margin: 0; }
+.distribution-list > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--border); }
+.distribution-list dt { font-size: 14px; }
+.distribution-list dt i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.distribution-list dt small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.distribution-list dd { margin: 0; font-variant-numeric: tabular-nums; font-size: 16px; white-space: nowrap; }
+.distribution-list dd small { color: var(--muted); font-size: 12px; }
+.cycle-strip { display: flex; gap: 8px; overflow-x: auto; padding: 8px 4px 16px; scroll-snap-type: x proximity; }
+.cycle-card { flex: 0 0 84px; width: 84px; margin: 0; padding: 12px 6px; display: grid; justify-items: center; gap: 8px; background: white; border: 1px solid var(--border); color: var(--text); font-weight: 400; border-radius: 10px; scroll-snap-align: start; }
+.cycle-card:hover:not(:disabled) { background: var(--soft); }
+.cycle-card[aria-pressed="true"] { background: #f9edda; border: 2px solid var(--primary); padding: 11px 5px; }
+.cycle-card > span { font-size: 13px; }
+.cycle-card > small { font-size: 10px; color: var(--muted); }
+.cycle-letters { display: grid; gap: 4px; }
+.cycle-letters b { font-size: 24px; line-height: 1.4; }
+.cycle-letters small { font-size: 14px; font-family: serif; margin-left: 3px; }
+.flow-overview h3 { margin-top: 32px; }
+.calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: center; margin: 28px 0; }
+.calendar-heading h3, .calendar-heading p { margin: 0; }
+.calendar-heading button { width: 44px; min-width: 44px; min-height: 44px; padding: 8px; margin: 0; }
+.daily-calendar { margin-top: 32px; border-top: 1px solid var(--border); }
+.daily-calendar table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.daily-calendar th { padding: 12px 0; color: var(--muted); font-size: 14px; font-weight: 500; }
+.daily-calendar td { height: 92px; padding: 10px 4px; text-align: center; vertical-align: top; border-top: 1px solid var(--border); }
+.daily-calendar td > * { display: block; }
+.daily-calendar td b { font-size: 15px; }
+.daily-calendar td span { font-size: 14px; margin-top: 5px; }
+.daily-calendar td small { font-size: 12px; color: var(--muted); }
+.daily-calendar th:first-child, .daily-calendar td:first-child b { color: var(--ink-화); }
+.daily-calendar th:last-child, .daily-calendar td:last-child b { color: var(--ink-수); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.deep-analysis-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.deep-analysis-grid > article { padding: 24px; background: #faf8f4; border: 1px solid var(--border); border-radius: 12px; }
+.deep-analysis-grid h3 { margin-top: 0; }
+.consultation-toc a { display: flex; align-items: center; gap: 12px; background: #faf8f4; font-size: 15px; }
+.chapter-number { color: var(--muted); font-family: Georgia, serif; font-size: 22px; }
+.consultation-chapter > summary { padding: 24px 0; font-size: 22px; }
+.chapter-summary { border-left: 3px solid var(--primary); background: #f7f2e8; padding: 20px 24px; margin: 4px 0 28px; }
+.chapter-summary strong { color: var(--primary); font-size: 13px; }
+.chapter-summary p { font-size: 19px; line-height: 1.8; margin: 10px 0 0; }
+.consultation-chapter article { max-width: 700px; margin: auto; padding: 8px 0 32px; }
+.consultation-chapter article + article { border-top: 1px solid var(--border); padding-top: 24px; }
+.section-number { color: var(--muted); font-size: 12px; letter-spacing: .06em; margin-bottom: 8px; }
+.consultation-chapter article h3 { margin-top: 0; font-size: 22px; line-height: 1.55; }
+.consultation-prose { line-height: 1.95; font-size: 17px; }
+.consultation-prose p { margin: 0 0 18px; }
+.consultation-example { border-left: 2px solid var(--border); padding: 4px 0 4px 18px; margin: 24px 0; }
+.consultation-example strong { font-size: 14px; color: var(--muted); }
+.consultation-example p { margin-bottom: 0; line-height: 1.8; }
+.consultation-question { background: #f4f2ed; line-height: 1.8; }
+.fortune-evidence { font-size: 14px; line-height: 1.8; }
+.integrated-reading { margin-top: 32px; }
+@media(max-width:600px) {
+  body { padding: 20px 12px; }
+  .page-header { padding: 24px 8px 36px; }
+  h1 { font-size: 36px; }
+  .intro { font-size: 15px; }
+  .result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel, .deep-analysis, .consultation-panel, .flow-overview { padding: 22px 16px; }
+  .distribution-grid { grid-template-columns: 1fr; }
+  .distribution-grid > article { padding: 18px; }
+  .report-nav { gap: 6px; }
+  .report-nav a { padding: 10px; font-size: 12px; }
+  .manse-table { min-width: 0; }
+  .manse-table th:first-child { width: 48px; font-size: 11px; }
+  .manse-table th, .manse-table td { padding: 10px 3px; font-size: 12px; }
+  .manse-table thead small { font-size: 10px; }
+  .manse-character strong { font-size: 23px; }
+  .manse-character strong span { font-size: 17px; margin-left: 2px; }
+  .manse-character small, .hidden-stem, .manse-stars { font-size: 11px; }
+  .deep-analysis-grid > article { padding: 18px; }
+  .daily-calendar td { height: 82px; padding: 8px 1px; }
+  .daily-calendar td span { font-size: 12px; }
+  .daily-calendar td small { font-size: 11px; }
+  .chapter-summary { padding: 16px; }
+  .chapter-summary p { font-size: 17px; }
+  .consultation-chapter > summary { font-size: 19px; }
+  .consultation-prose { font-size: 16px; }
+}
