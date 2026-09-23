@@ -4,9 +4,10 @@ import { calculate, type SajuInput } from "../lib/saju/chart";
 import { calculateDaewoon } from "../lib/saju/daewoon";
 import { calculateBenefactors } from "../lib/saju/benefactors";
 import { createGeminiReadingContext } from "../lib/saju/gemini-reading";
-import { CHAPTERS, consultationFacts, consultationPrompt, consultationSchema, validateChapter, validateConsultation, type ChapterId, type Consultation, type ConsultationChapter } from "../lib/saju/consultation";
+import { CHAPTERS, READING_STYLE_VERSION, consultationFacts, consultationPrompt, consultationSchema, validateChapter, validatePlainChapter, validateSeasonedChapter, validateConsultation, type ChapterId, type Consultation, type ConsultationChapter } from "../lib/saju/consultation";
 import { isSavedSajuResult, readSavedSajuResult, writeSavedSajuResult, type SavedSajuResult } from "../lib/saju/persistence";
 import { resultFingerprint, validateCloudPayload, type CloudPayload } from "../lib/account/results";
+import { buildLifeSeasons } from "../lib/saju/life-seasons";
 
 const input: SajuInput = { date: "1994-12-01", time: "08:37", calendar: "solar", topic: "general", question: "외부 전송하지 않을 내 개인 질문", birthplace: { countryCode: "KR", countryName: "대한민국", city: "비공개 도시명", province: "수도권", timezone: "Asia/Seoul", longitude: 126.978 } };
 const chart = calculate(input);
@@ -29,6 +30,13 @@ function chapter(id: ChapterId = "natal"): ConsultationChapter {
   };
 }
 function consultation(chapters: ConsultationChapter[] = [chapter()]): Consultation { return { version: 1, analysisVersion: 1, year: 2026, chapters }; }
+function plainChapter(id: ChapterId = "natal"): ConsultationChapter {
+  const value = chapter(id);
+  return { ...value, summary: "자신이 결정할 일과 다른 사람에게 도움받을 일을 나누면, 어떤 환경이 맞는지 비교하기 쉽습니다.", sections: value.sections.map(section => ({
+    ...section,
+    text: "다른 사람에게 도움을 받더라도 자신이 결정할 수 있는 일이 남아 있어야 편할 수 있습니다.\n\n" + section.text + "이 판단은 정해진 성격을 뜻하는 것이 아닙니다. 앞서 살펴본 서로 다른 조건을 실제로 경험한 사례와 나란히 적어보고, 어느 상황에서 자신의 권한과 지원이 충분했는지 구분해 보세요.",
+  })) };
+}
 function saved(extra: Partial<SavedSajuResult> = {}): SavedSajuResult {
   return { version: 1, savedAt: "2026-09-23T05:00:00Z", input, yunGender: 0, chart, timeline, benefactors, reading: null, ...extra };
 }
@@ -99,6 +107,70 @@ test("상담 프롬프트는 개인 입력을 보내지 않고 판정 보류·�
   }
 });
 
+test("새 상담은 경력 사칭 없이 쉬운 생활말과 불편한 조건을 요청한다", () => {
+  assert.equal(READING_STYLE_VERSION, 3);
+  const prompt = consultationPrompt(context, "lifetime");
+  for (const phrase of ["30년", "사칭", "쉬운", "반대", "부담", "실제 경험", "현재", "계절"]) {
+    assert.ok(prompt.includes(phrase), phrase);
+  }
+  assert.ok(!prompt.includes(input.date));
+  assert.ok(!prompt.includes(input.birthplace!.city));
+});
+
+test("평생 상담에는 개인 대운 4계절과 현재 지점을 동일한 계산으로 전달한다", () => {
+  const report = buildLifeSeasons(chart, timeline);
+  const prompt = consultationPrompt(context, "lifetime", report);
+  assert.ok(report.current);
+  assert.ok(prompt.includes(report.current.seasonLabel));
+  assert.ok(prompt.includes(String(report.current.currentYear)));
+  assert.ok(prompt.includes(String(report.current.periodIndex)));
+  assert.ok(prompt.includes(report.periods.find(period => period.index === report.current!.periodIndex)!.ganji));
+  assert.ok(!prompt.includes(input.date));
+  assert.ok(!prompt.includes(input.birthplace!.city));
+});
+
+test("새 평생 상담은 현재 대운과 그 사람의 계절을 실제 본문에 짚어야 한다", () => {
+  const seasons = buildLifeSeasons(chart, timeline);
+  const active = seasons.periods.find(period => period.index === seasons.current!.periodIndex)!;
+  const activePosition = seasons.periods.findIndex(period => period.index === active.index);
+  const other = seasons.periods.slice(Math.max(0, activePosition - 1), activePosition + 2).find(period => period.seasonLabel !== active.seasonLabel);
+  const base = plainChapter("lifetime");
+  const grounded = {
+    ...base,
+    summary: `${active.startYear}년부터 ${active.endYear}년까지는 ${active.seasonLabel}의 주제가 앞에 옵니다. 익힌 방법을 실제 생활에 맞춰 보고 맡을 일의 범위를 확인해 보세요.`,
+    sections: base.sections.map((section, index) => index === 0 ? {
+      ...section,
+      text: section.text + `\n\n현재 ${timeline.currentYear}년은 ${active.startYear}~${active.endYear}년 ${active.korean} 대운 안에 있습니다. 이 대운의 주제는 ${active.seasonLabel}이며, ${other ? `${other.seasonLabel}의 주제였던 이웃 대운과 비교해` : "실제 경험과 비교해"} 배움과 실행의 순서가 실제 생활에서 어떻게 달라지는지 확인합니다.`,
+      evidenceIds: [...section.evidenceIds, `period_${active.index}`],
+    } : section),
+  };
+  assert.equal(validateSeasonedChapter(grounded, "lifetime", validIds, seasons), grounded);
+  assert.throws(() => validateSeasonedChapter(base, "lifetime", validIds, seasons), /계절|현재|대운/);
+  assert.throws(() => validateSeasonedChapter({ ...grounded, summary: "이 장에서는 삶의 흐름과 현재 시기에 맞는 선택의 조건을 차분하게 살펴봅니다." }, "lifetime", validIds, seasons), /요약|구체|생활|계절/);
+  const otherSeason = ["봄", "여름", "가을", "겨울"].find(label => label !== active.seasonLabel)!;
+  const wrong = { ...grounded, summary: grounded.summary.replace(active.seasonLabel, otherSeason), sections: grounded.sections.map(section => ({ ...section, text: section.text.replaceAll(active.seasonLabel, otherSeason) })) };
+  assert.throws(() => validateSeasonedChapter(wrong, "lifetime", validIds, seasons), /계절|현재|대운/);
+  const contradictory = { ...grounded, sections: grounded.sections.map((section, index) => index === 0 ? { ...section, text: section.text + `\n\n현재 계절은 ${otherSeason}.` } : section) };
+  assert.throws(() => validateSeasonedChapter(contradictory, "lifetime", validIds, seasons), /다르게|계절/);
+
+  const storage = memory();
+  const completeV3: Consultation = { ...consultation(), readingStyleVersion: 3, chapters: [grounded] };
+  assert.equal(writeSavedSajuResult(saved({ consultation: completeV3 }), storage), true);
+  assert.deepEqual(readSavedSajuResult(storage)?.consultation, completeV3);
+  const missingSeasonV3: Consultation = { ...completeV3, chapters: [base] };
+  assert.equal(writeSavedSajuResult(saved({ consultation: missingSeasonV3 }), storage), false);
+  assert.deepEqual(readSavedSajuResult(storage)?.consultation, completeV3, "손상된 새 상담이 정상 저장본을 덮지 않는다");
+});
+
+test("기존 문체 2 평생 장은 새 계절 표기가 없어도 저장해 다시 읽을 수 있다", () => {
+  const old: Consultation = { ...consultation(), readingStyleVersion: 2, chapters: [plainChapter("lifetime")] };
+  assert.equal(validateConsultation(old, validIds), old);
+  const value = saved({ consultation: old });
+  const target = memory();
+  assert.equal(writeSavedSajuResult(value, target), true);
+  assert.deepEqual(readSavedSajuResult(target)?.consultation, old);
+});
+
 test("과거 저장본을 유지하고 부분 상담을 로컬·계정 형식에 손실 없이 보존한다", async () => {
   const target = memory();
   const legacy = saved();
@@ -124,4 +196,92 @@ test("기존 reading이 null이어도 손상된 상담은 로컬 저장 검증�
     assert.equal(isSavedSajuResult(entry), false);
     assert.equal(writeSavedSajuResult(entry as SavedSajuResult, memory()), false);
   }
+});
+
+test("쉬운 상담 장은 충분한 요약과 기존 상세 근거를 모두 갖춰야 한다", () => {
+  for (const length of [30, 180]) {
+    const value = { ...plainChapter(), summary: "가".repeat(length) };
+    assert.equal(validatePlainChapter(value, "natal", validIds), value);
+  }
+  for (const summary of [undefined, null, 42, "", " ".repeat(40), "가".repeat(29), "가".repeat(181)]) {
+    assert.throws(() => validatePlainChapter({ ...plainChapter(), summary }, "natal", validIds));
+  }
+  const readable = plainChapter();
+  assert.throws(() => validatePlainChapter({ ...readable, sections: [] }, "natal", validIds));
+  assert.throws(() => validatePlainChapter({ ...readable, sections: [{ ...readable.sections[0], evidenceIds: ["invented_a", "invented_b"] }, ...readable.sections.slice(1)] }, "natal", validIds));
+});
+
+test("기존 1·2 문체와 새 3 문체를 모두 읽되 잘못된 문체를 거부한다", () => {
+  const legacy = consultation([chapter(), chapter("strength")]);
+  assert.equal(validateConsultation(legacy, validIds), legacy);
+  const readableV2 = { ...legacy, readingStyleVersion: 2 as const, chapters: legacy.chapters.map(ch => plainChapter(ch.id)) };
+  assert.equal(validateConsultation(readableV2, validIds), readableV2);
+  const readableV3 = { ...readableV2, readingStyleVersion: 3 as const };
+  assert.equal(validateConsultation(readableV3, validIds), readableV3);
+  assert.throws(() => validateConsultation({ ...legacy, readingStyleVersion: 2 }, validIds));
+  assert.throws(() => validateConsultation({ ...legacy, readingStyleVersion: 3 }, validIds));
+  for (const readingStyleVersion of [0, 1, 4, "3", null]) assert.throws(() => validateConsultation({ ...readableV3, readingStyleVersion }, validIds));
+});
+
+test("새 상담의 요약과 버전은 로컬·계정 저장에서 보존하고 손상된 요약은 저장하지 않는다", async () => {
+  const target = memory();
+  const readable: Consultation = { ...consultation(), readingStyleVersion: 3, chapters: [plainChapter()] };
+  const value = saved({ consultation: readable });
+  assert.equal(writeSavedSajuResult(value, target), true);
+  assert.deepEqual(readSavedSajuResult(target)?.consultation, readable);
+  const cloud: CloudPayload = { version: 1, fortuneYear: 2026, result: value };
+  assert.equal(validateCloudPayload(cloud), cloud);
+  const legacy = { ...cloud, result: saved({ consultation: consultation() }) };
+  assert.notEqual(await resultFingerprint(cloud, "가상 상담"), await resultFingerprint(legacy, "가상 상담"));
+  const broken = saved({ consultation: { ...readable, chapters: [chapter()] } });
+  assert.equal(isSavedSajuResult(broken), false);
+  assert.equal(writeSavedSajuResult(broken, target), false);
+  assert.deepEqual(readSavedSajuResult(target)?.consultation, readable);
+});
+
+test("쉬운 상담은 280자와 두 문단을 함께 요구하고 예전 160자 한 문단은 계속 복원한다", () => {
+  const readable = plainChapter();
+  const withText = (text: string) => ({ ...readable, sections: [{ ...readable.sections[0], text }, ...readable.sections.slice(1)] });
+  assert.throws(() => validatePlainChapter(withText("가".repeat(138) + "\n\n" + "나".repeat(139)), "natal", validIds), "279자는 두 문단이어도 거부");
+  assert.throws(() => validatePlainChapter(withText("가".repeat(400)), "natal", validIds), "충분히 길어도 한 문단이면 거부");
+  assert.throws(() => validatePlainChapter(withText("가".repeat(280) + "\n\n   "), "natal", validIds), "빈 문단은 세지 않음");
+  const boundary = withText("가".repeat(139) + "\n\n" + "나".repeat(139));
+  assert.equal(validatePlainChapter(boundary, "natal", validIds), boundary);
+  const legacy = withText("가".repeat(160));
+  delete legacy.summary;
+  assert.equal(validateChapter(legacy, "natal", validIds), legacy);
+  const result = saved({ consultation: consultation([legacy]) });
+  assert.equal(isSavedSajuResult(result), true);
+  const storage = memory();
+  assert.equal(writeSavedSajuResult(result, storage), true);
+  assert.equal(readSavedSajuResult(storage)?.consultation?.chapters[0].sections[0].text.length, 160);
+});
+
+test("새 상담 요약과 첫 문장은 쉬운 생활말을 요구하되 이후 설명의 명리 근거와 이전 상담은 허용한다", () => {
+  const value = plainChapter();
+  for (const summary of [
+    "일간과 월지를 바탕으로 자신에게 잘 맞는 환경을 정하고 주변 도움을 받을 기준을 세워보세요.",
+    "甲과 木의 관계를 바탕으로 자신에게 잘 맞는 환경을 정하고 주변 도움을 받을 기준을 세워보세요.",
+    "자신의 에너지가 약해지지 않도록 맡은 일을 나누고 다른 사람에게 도움받을 기준을 세워보세요.",
+  ]) assert.throws(() => validatePlainChapter({ ...value, summary }, "natal", validIds), summary);
+  for (const summary of [
+    "도움을 받을 때도 결정할 권한이 남아 있어야 편할 수 있어, 누가 어떤 일을 맡는지 먼저 살펴봅니다.",
+    "다른 사람에게 맡길 일과 직접 결정할 일을 나누면, 불필요한 책임이 늘어나는 일을 줄이며 부담을 다룹니다.",
+    "함께 일할 때도 자신의 선택을 지지받는 조건이 중요해, 도움을 받았던 때와 혼자 맡았던 때를 비교합니다.",
+    "책임을 나눌 때 결정할 권한까지 넘기면 답답할 수 있어, 역할을 정하기 전에 합의할 조건을 확인합니다.",
+  ]) {
+    const readable = { ...value, summary };
+    assert.equal(validatePlainChapter(readable, "natal", validIds), readable, "생활 요약을 문장 끝 동사만으로 거부하지 않는다");
+  }
+  for (const opening of ["일간과 월지가 영향을 줍니다.", "용신을 고려해야 합니다.", "甲이 중심입니다."]) {
+    const sections = [{ ...value.sections[0], text: opening + "\n\n" + value.sections[0].text }, ...value.sections.slice(1)];
+    assert.throws(() => validatePlainChapter({ ...value, sections }, "natal", validIds), opening);
+    const legacy = { ...chapter(), sections };
+    assert.equal(validateChapter(legacy, "natal", validIds), legacy);
+  }
+  assert.ok(value.sections[0].text.includes("월지"), "전문 근거는 두 번째 문단에 유지");
+  assert.equal(validatePlainChapter(value, "natal", validIds), value);
+  const legacySummary = { ...chapter(), summary: "일간과 월지를 바탕으로 하는 에너지 흐름과 주변 도움의 조건을 살펴봅니다." };
+  assert.equal(validateChapter(legacySummary, "natal", validIds), legacySummary);
+  assert.equal(isSavedSajuResult(saved({ consultation: consultation([legacySummary]) })), true);
 });

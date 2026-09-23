@@ -4,6 +4,7 @@ import type { DaewoonTimeline, YunGender } from "./daewoon";
 import { validateGeminiSajuReading, type GeminiSajuReading } from "./gemini-reading";
 import { createGeminiReadingContext } from "./gemini-reading";
 import { consultationFacts, validateConsultation, type Consultation } from "./consultation";
+import { buildLifeSeasons } from "./life-seasons";
 
 const STORAGE_KEY = "saju-reading:v1";
 
@@ -78,7 +79,7 @@ export function isSavedSajuResult(value: unknown): value is SavedSajuResult {
     try {
       const consultation = validateConsultation(saved.consultation);
       const context = createGeminiReadingContext(saved.chart, saved.timeline, saved.benefactors, consultation.year);
-      validateConsultation(consultation, consultationFacts(context).map(f => f.id));
+      validateConsultation(consultation, consultationFacts(context).map(f => f.id), consultation.readingStyleVersion===3 ? buildLifeSeasons(saved.chart,saved.timeline) : undefined);
     } catch { return false; }
   }
   if (saved.reading === null) return true;

@@ -15,9 +15,13 @@ import {
 import { calculateBenefactors, type Benefactor } from "../lib/saju/benefactors";
 import { createGeminiReadingContext, validateGeminiSajuReading, type GeminiSajuReading } from "../lib/saju/gemini-reading";
 import { analyzeNatal } from "../lib/saju/deep-analysis";
-import { CHAPTERS, consultationFacts, validateChapter, type Consultation } from "../lib/saju/consultation";
+import { CHAPTERS, CHAPTER_LABELS, READING_STYLE_VERSION, consultationFacts, validateSeasonedChapter, type Consultation } from "../lib/saju/consultation";
 import DeepAnalysisPanel from "./deep-analysis-panel";
 import ConsultationPanel from "./consultation-panel";
+import MansePanel from "./manse-panel";
+import FlowOverview from "./flow-overview";
+import LifeSeasonsPanel from "./life-seasons-panel";
+import { buildLifeSeasons } from "../lib/saju/life-seasons";
 import { buildLocalReading } from "../lib/saju/reading";
 import { clearSavedSajuResult, readSavedSajuResult, writeSavedSajuResult } from "../lib/saju/persistence";
 import type { Birthplace } from "../lib/saju/birth-moment";
@@ -80,6 +84,7 @@ export default function SajuForm() {
   const fortune = useMemo(() => chart && timeline ? buildFortuneReport(chart, timeline, fortuneYear) : null, [chart, timeline, fortuneYear]);
   const visibleReading = reading?.readingVersion === 2 && reading.analysisVersion === 1 && reading.fortuneYear === fortuneYear ? reading : null;
   const deepAnalysis = useMemo(() => chart ? analyzeNatal(chart) : null, [chart]);
+  const lifeSeasons = useMemo(() => chart && timeline ? buildLifeSeasons(chart, timeline) : null, [chart, timeline]);
   const consultationContext = useMemo(() => chart && timeline ? createGeminiReadingContext(chart, timeline, benefactors, fortuneYear) : null, [chart,timeline,benefactors,fortuneYear]);
   const facts = useMemo(() => consultationContext ? consultationFacts(consultationContext) : [], [consultationContext]);
   const visibleConsultation = consultation?.year === fortuneYear ? consultation : undefined;
@@ -311,19 +316,19 @@ export default function SajuForm() {
     const ticket = ++generation.current;
     const controller = new AbortController();
     consultationAbort.current = controller;
-    let next: Consultation = visibleConsultation ?? { version: 1, analysisVersion: 1, year: fortuneYear, chapters: [] };
+    let next: Consultation = visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION ? visibleConsultation : { version: 1, analysisVersion: 1, readingStyleVersion: READING_STYLE_VERSION, year: fortuneYear, chapters: [] };
     setIsGenerating(true); setConsultationError("");
     try {
       for (const definition of CHAPTERS) {
         if (next.chapters.some(c => c.id === definition.id)) continue;
-        setConsultationProgress(`${CHAPTERS.findIndex(c=>c.id===definition.id)+1}/8장 · ${definition.title}`);
+        setConsultationProgress(`${CHAPTERS.findIndex(c=>c.id===definition.id)+1}/8장 · ${CHAPTER_LABELS[definition.id]}`);
         const response = await fetch("/api/consultation", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", signal: controller.signal,
           body: JSON.stringify({ consent: true, input: pendingInput, yunGender, fortuneYear, chapterId: definition.id }) });
         const body = await response.json();
         if (ticket !== generation.current) return;
         if (!response.ok) throw new Error(body.error?.message || "이번 장을 작성하지 못했습니다.");
-        if (body.year !== fortuneYear || body.analysisVersion !== 1) throw new Error("상담의 계산 연도가 달라 다시 확인해야 합니다.");
-        const chapter = validateChapter(body.chapter, definition.id, facts.map(f=>f.id));
+        if (body.year !== fortuneYear || body.analysisVersion !== 1 || body.readingStyleVersion !== READING_STYLE_VERSION) throw new Error("상담의 계산 연도가 달라 다시 확인해야 합니다.");
+        const chapter = validateSeasonedChapter(body.chapter, definition.id, facts.map(f=>f.id), definition.id==="lifetime"?lifeSeasons??undefined:undefined);
         next = { ...next, chapters: [...next.chapters, chapter].sort((a,b)=>CHAPTERS.findIndex(c=>c.id===a.id)-CHAPTERS.findIndex(c=>c.id===b.id)) };
         setConsultation(next);
         const savedAt = new Date().toISOString(); setResultSavedAt(savedAt);
@@ -474,46 +479,12 @@ export default function SajuForm() {
               일간은 {chart.dayMaster.korean}
               {chart.dayMaster.element}({chart.dayMaster.character})입니다.
             </p>
-            <dl className="pillars">
-              {chart.pillars.map((item) => (
-                <div key={item.label}>
-                  <dt>{item.label}</dt>
-                  <dd>{item.text}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="note">{chart.method}</p>
-            <div className="evidence-block">
-              <h3>오행 살펴보기</h3>
-              <div className="element-grid">
-                {(Object.entries(chart.elements) as [keyof SajuChart["elements"], number][]).map(([element, count]) => (
-                  <div className="element-item" key={element}>
-                    <strong>{element} {count}</strong>
-                    <span>{chart.pillars.flatMap((pillar) => [
-                      pillar.stemElement === element ? `${pillar.label} 천간` : null,
-                      pillar.branchElement === element ? `${pillar.label} 지지` : null,
-                    ]).filter(Boolean).join(" · ") || "대표 글자에는 없음"}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="note">{chart.elementMethod}</p>
-            </div>
-            <div className="evidence-block">
-              <h3>귀인 살펴보기</h3>
-              <div className="benefactor-grid">
-                {benefactors.map((star) => (
-                  <article className="benefactor-card" key={star.name}>
-                    <h4>{star.name}</h4>
-                    <p>{star.matchedPillars.length ? `${star.matchedPillars.join(" · ")}에서 확인` : "네 기둥에서 해당 없음"}</p>
-                    <p className="benefactor-basis">{star.basis}</p>
-                    <p className="benefactor-basis">{star.description}</p>
-                  </article>
-                ))}
-              </div>
-              <p className="note">귀인은 있다고 반드시 좋고, 없다고 도움받지 못하는 것은 아닙니다. 문창귀인은 《삼명통회》 기준이며 유파에 따라 규칙이 다릅니다.</p>
-            </div>
+            <MansePanel chart={chart} benefactors={benefactors} />
           </section>
         )}
+        {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
+        {lifeSeasons && <LifeSeasonsPanel report={lifeSeasons} />}
+        {chart && timeline && fortune && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={setFortuneYear} disabled={isGenerating} />}
         {fortune && (
           <div className="integrated-reading">
             <label htmlFor="fortune-year">살펴볼 운의 연도</label>
@@ -521,7 +492,6 @@ export default function SajuForm() {
               {Array.from({ length: 111 }, (_, index) => 1990 + index).map((year) => <option key={year} value={year}>{year}년</option>)}
             </select>
             <FortunePanel report={fortune} reading={visibleReading} timezone={chart?.birthplace?.timezone} />
-            {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
           </div>
         )}
         {timeline && (
@@ -614,11 +584,12 @@ export default function SajuForm() {
               {isGenerating ? "해석을 만들고 있습니다…" : readingError ? "동의하고 다시 요청" : reading ? "최신 분석으로 다시 해석하기" : "나의 종합 해석 만들기"}
             </button>
             {isGenerating && !consultationProgress && <p className="method-help" role="status">평생 흐름과 대운·세운·월운을 함께 풀고 있습니다. 잠시 기다려 주세요.</p>}
-            <div className="consultation-start"><h3>한 사람의 삶을 깊이 살피는 8장 상담</h3>
-              <p>원국, 강약, 격국·용신, 평생 흐름, 일, 돈, 관계, 실천까지. 각 장을 여러 절로 풀어 근거·반대 조건·생활 예시·확인 질문을 함께 설명합니다. 장별로 생성하므로 몇 분 걸릴 수 있고, 완성한 장부터 읽을 수 있습니다.</p>
+            <div className="consultation-start" id="consultation-start"><h3>한 사람의 삶을 깊이 살피는 8장 상담</h3>
+              <p>나의 성향, 잘 맞는 환경, 앞으로의 변화, 일, 돈, 관계를 쉬운 말로 설명합니다. 생활 속 예시와 지금 해볼 일을 먼저 읽고, 궁금하면 사주 근거를 펼쳐 보세요. 장별로 생성하므로 몇 분 걸릴 수 있고, 완성한 장부터 읽을 수 있습니다.</p>
               {consultation && !visibleConsultation && <p className="storage-warning">다른 연도의 상담이 저장되어 있습니다. 선택 연도로 작성하면 새로 완성된 장부터 저장됩니다.</p>}
-              <button type="button" onClick={requestConsultation} disabled={!consentAccepted || isGenerating || visibleConsultation?.chapters.length === 8}>{visibleConsultation?.chapters.length === 8 ? "8장 상담 작성 완료" : visibleConsultation?.chapters.length ? "남은 상담 이어서 작성하기" : "심층 상담 8장 작성하기"}</button>
-              {consultationProgress && <><p role="status">{consultationProgress} 작성 중…</p><progress max={8} value={visibleConsultation?.chapters.length ?? 0} aria-label="완성된 상담 장"/><button type="button" className="secondary-button" onClick={pauseConsultation}>잠시 멈추기</button></>}
+              {visibleConsultation && visibleConsultation.readingStyleVersion !== READING_STYLE_VERSION && <p className="storage-warning">이전에 작성한 상담입니다. 쉬운 말로 다시 작성할 수 있습니다. 첫 장 작성에 성공하면 새 상담으로 바뀝니다.</p>}
+              <button type="button" onClick={requestConsultation} disabled={!consentAccepted || isGenerating || visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === 8}>{visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === 8 ? "8장 상담 작성 완료" : visibleConsultation && visibleConsultation.readingStyleVersion !== READING_STYLE_VERSION ? "쉬운 말로 8장 다시 작성하기" : visibleConsultation?.chapters.length ? "남은 상담 이어서 작성하기" : "쉬운 말로 8장 상담 시작하기"}</button>
+              {consultationProgress && <><p role="status">{consultationProgress} 작성 중…</p><progress max={8} value={visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION ? visibleConsultation.chapters.length : 0} aria-label="완성된 상담 장"/><button type="button" className="secondary-button" onClick={pauseConsultation}>잠시 멈추기</button></>}
               {consultationError && <p className="error" role="alert">{consultationError}</p>}
             </div>
           </section>
