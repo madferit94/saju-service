@@ -1,6 +1,7 @@
 import lunar from "lunar-javascript";
 import type { SajuChart } from "./chart";
 import type { DaewoonTimeline } from "./daewoon";
+import { buildLifeDomains } from "./fortune-domains";
 
 const stems = [..."甲乙丙丁戊己庚辛壬癸"];
 const branches = [..."子丑寅卯辰巳午未申酉戌亥"];
@@ -175,15 +176,7 @@ export function buildFortuneReport(chart: SajuChart, timeline: DaewoonTimeline, 
       (dominant === natalMonthGod ? "평소 익숙한 삶의 방식을 다시 활용할 시기라는 관점입니다. 익숙함이 과해질 때의 부담도 함께 봐야 합니다." :
         "평소의 주제인 ‘" + meanings[natalMonthGod].meaning + "’와 올해의 주제인 ‘" + meanings[dominant].meaning + "’ 사이에서 우선순위를 정하는 것이 해석의 핵심입니다.") +
       " 큰 배경은 " + annual.daewoon + "이며, 아래 월운에서 같은 주제가 반복되거나 합·충으로 조정이 필요한 구간을 확인할 수 있습니다.",
-    domains: age < 20 ? [
-      { title: "배움과 성장", body: annual.opportunity },
-      { title: "생활 기반", body: annual.risk },
-      { title: "가족·또래 관계", body: annual.action },
-    ] : [
-      { title: "일·학업운", body: annual.evidence[0] + ". " + meanings[dominant].opportunity + "을 시도해볼 수 있습니다. " + meanings[dominant].action },
-      { title: "재물운", body: "타고난 천간 중 재성(자원·거래 관계)은 " + (chart.pillars.filter((p) => ["정재", "편재"].includes(tenGod(chart.dayMaster.character, p.stem))).map((p) => p.label + " " + p.text + "(" + p.korean + ")").join(", ") || "드러나지 않습니다. 이것만으로 재물의 유무를 판단하지 않습니다") + ". 올해의 " + dominant + " 흐름에서는 " + (["정재", "편재"].includes(dominant) ? meanings[dominant].risk : "활동과 책임이 늘 때 들어가는 비용") + "을 함께 살피세요. 제안 금액보다 실제로 남는 금액과 시간을 비교해 보세요." },
-      { title: "관계·인연운", body: "일지 " + chart.pillars[2].branch + "(" + chart.pillars[2].korean[1] + ")는 가까운 관계를 살피는 자리입니다. " + (annual.evidence.filter((x) => x.startsWith("일주")).join(". ") || "올해 지지와 일지 사이에 이번 계산 범위의 육합·충·반복은 없습니다") + ". 관계의 사건을 예언하는 대신, 생활 방식·연락 빈도·돈과 시간의 분담 중 실제로 조정이 필요한 항목을 대화로 확인하세요." },
-    ],
+    domains: buildLifeDomains(chart, annual, year, age, natalHidden, tenGod),
     method: "십성·지장간·천간합·지지육합·충을 함께 읽습니다. 합은 자동으로 다른 오행이 된다는 뜻이 아닙니다. 강약과 격국·용신 후보는 심층 분석에서 근거와 함께 살펴봅니다. 세운은 입춘, 월운은 절입 시각부터 적용하며 대운은 기존 연도 구간 기준입니다. 평생 흐름의 연령 구간은 화면을 읽기 위한 구분이며 수명 예측이 아닙니다.",
   };
 }

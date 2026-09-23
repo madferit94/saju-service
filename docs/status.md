@@ -27,4 +27,6 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 
 - [x] 015-life-seasons-and-counselor-voice.md — 개인 대운의 인생 4계절 그래프와 쉬우면서 솔직한 상담
 
-- [x] 016-continuous-reading.md — 운 항목 현황 점검과 동의 후 자동 생성·연속 읽기 (가상 자료로 검증, 실제 Gemini 생성·참가자 화면 확인 전)
+- [x] 016-continuous-reading.md — 운 항목 현황 점검과 연속 읽기 (자동 Gemini 상담 화면은 Spec 017에서 제거)
+
+- [x] 017-life-domain-fortunes.md — 건강·연애·배우자·자녀 등 생활 주제별 운 풀이 확장 (가상 자료 검증, 참가자 화면 확인 전)

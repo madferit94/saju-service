@@ -20,7 +20,7 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
     <p className="result-label">평생의 바탕에서 한 달의 선택까지</p>
     <h2 id="fortune-title">나의 평생 운과 지금의 흐름</h2>
     <p className="fortune-synthesis">{reading?.synthesis ?? report.synthesis}</p>
-    <nav className="fortune-section-nav" aria-label="운세 주제 바로가기"><a href="#fortune-lifetime">평생운</a><a href="#fortune-annual">{report.year}년 · 월별운</a><a href="#fortune-domains">일 · 재물 · 관계</a></nav>
+    <nav className="fortune-section-nav" aria-label="운세 주제 바로가기"><a href="#fortune-lifetime">평생운</a><a href="#fortune-annual">{report.year}년 · 월별운</a><a href="#fortune-domains">생활 주제별 운</a></nav>
     <section className="fortune-content" id="fortune-lifetime" aria-labelledby="fortune-lifetime-title">
       <h3 id="fortune-lifetime-title">인생 전체를 이어서 읽기</h3>
       <p className="method-help">사주식 나이로 초년부터 후반까지, 실제 대운이 달라지는 구간을 묶었습니다.</p>
@@ -61,10 +61,19 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
         </details>;
       })}</div>
     </section>
-    <section className="fortune-content reading-grid" id="fortune-domains" aria-label="일·재물·관계 풀이">
-      {report.domains.map((domain) => <article className="reading-card" key={domain.title}>
-        <h3>{domain.title}</h3><p>{domain.title === "일·학업운" ? reading?.career ?? domain.body : domain.title === "재물운" ? reading?.money ?? domain.body : domain.title === "관계·인연운" ? reading?.relationships ?? domain.body : domain.body}</p>
-      </article>)}
+    <section className="fortune-content" id="fortune-domains" aria-labelledby="fortune-domains-title">
+      <h3 id="fortune-domains-title">생활 주제별 운</h3>
+      <p className="method-help">각 주제는 원국의 자리와 십성, {report.year}년 세운을 함께 읽었습니다. 실제 경험과 맞지 않는 부분은 질문을 통해 확인해 보세요.</p>
+      <nav className="fortune-domain-nav" aria-label="생활 운 항목 바로가기">{report.domains.map((domain) => <a key={domain.id} href={`#fortune-domain-${domain.id}`}>{domain.title}</a>)}</nav>
+      <div className="reading-grid fortune-domain-grid">{report.domains.map((domain) => {
+        const extra = domain.id === "career" ? reading?.career : domain.id === "money" ? reading?.money : domain.id === "partner" ? reading?.relationships : null;
+        return <article className="reading-card fortune-domain-card" id={`fortune-domain-${domain.id}`} key={domain.id}>
+          <h4>{domain.title}</h4><p>{domain.body}</p>
+          {extra && <p className="domain-extra"><strong>기존 종합 해석</strong><br />{extra}</p>}
+          <p className="domain-question"><strong>내 경험에 비춰보기</strong><br />{domain.question}</p>
+          <details className="fortune-evidence"><summary>이렇게 읽은 사주 근거</summary><ul>{domain.evidence.map((line, index) => <li key={index}>{line}</li>)}</ul></details>
+        </article>;
+      })}</div>
     </section>
     <details className="fortune-evidence natal-evidence">
       <summary>타고난 지장간·합충과 계산 기준</summary>

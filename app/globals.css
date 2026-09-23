@@ -500,6 +500,9 @@ select:focus-visible {
   background: var(--surface);
 }
 
+.gemini-consent > summary { min-height: 44px; cursor: pointer; color: var(--primary); font-size: 18px; font-weight: 700; line-height: 1.6; }
+.gemini-consent > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+
 .gemini-consent h2 {
   margin: 0 0 12px;
   font-size: 24px;
@@ -718,6 +721,16 @@ select:focus-visible {
 .fortune-evidence { margin-top: 12px; padding: 8px 14px; background: #f3f5f1; border-radius: 10px; font-size: 14px; }
 .fortune-evidence ul, .fortune-facts { padding-left: 20px; line-height: 1.8; }
 .fortune-evidence li { margin: 6px 0; }
+.fortune-domain-grid { margin-top: 18px; gap: 16px; }
+.fortune-domain-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.fortune-domain-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 13px; border: 1px solid var(--border); border-radius: 8px; color: var(--primary); text-decoration: none; font-weight: 600; }
+.fortune-domain-nav a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.fortune-domain-card { min-width: 0; scroll-margin-top: 20px; }
+.fortune-domain-card:last-child { border-color: var(--border); background: var(--surface); }
+.fortune-domain-card h4 { margin: 0 0 12px; font-size: 20px; line-height: 1.5; }
+.fortune-domain-card .domain-question { margin-top: 20px; padding: 14px 16px; border-radius: 10px; background: #f7f2e8; }
+.fortune-domain-card .domain-extra { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.fortune-domain-card .fortune-evidence { margin-top: 16px; }
 .natal-evidence { margin-top: 28px; }
 .fortune-panel p, .fortune-panel li { overflow-wrap: anywhere; }
 
