@@ -13,11 +13,10 @@ import {
   type PeriodStatus,
 } from "../lib/saju/daewoon";
 import { calculateBenefactors, type Benefactor } from "../lib/saju/benefactors";
-import { createGeminiReadingContext, validateGeminiSajuReading, type GeminiSajuReading } from "../lib/saju/gemini-reading";
+import { validateGeminiSajuReading, type GeminiSajuReading } from "../lib/saju/gemini-reading";
 import { analyzeNatal } from "../lib/saju/deep-analysis";
-import { CHAPTERS, CHAPTER_LABELS, READING_STYLE_VERSION, consultationFacts, validateSeasonedChapter, type Consultation } from "../lib/saju/consultation";
+import type { Consultation } from "../lib/saju/consultation";
 import DeepAnalysisPanel from "./deep-analysis-panel";
-import ConsultationPanel from "./consultation-panel";
 import MansePanel from "./manse-panel";
 import FlowOverview from "./flow-overview";
 import LifeSeasonsPanel from "./life-seasons-panel";
@@ -53,10 +52,7 @@ export default function SajuForm() {
   const resultSourceRef = useRef<"local" | "cloud">("local");
   const [resultSavedAt, setResultSavedAt] = useState("");
   const generation = useRef(0);
-  const consultationAbort = useRef<AbortController | null>(null);
   const [consultation, setConsultation] = useState<Consultation | undefined>();
-  const [consultationProgress, setConsultationProgress] = useState("");
-  const [consultationError, setConsultationError] = useState("");
   const [fortuneYear, setFortuneYear] = useState(new Date().getFullYear());
   const [calendar, setCalendar] = useState<"solar" | "lunar">("solar");
   const [leapMonth, setLeapMonth] = useState<"regular" | "leap" | "unknown">("unknown");
@@ -85,9 +81,6 @@ export default function SajuForm() {
   const visibleReading = reading?.readingVersion === 2 && reading.analysisVersion === 1 && reading.fortuneYear === fortuneYear ? reading : null;
   const deepAnalysis = useMemo(() => chart ? analyzeNatal(chart) : null, [chart]);
   const lifeSeasons = useMemo(() => chart && timeline ? buildLifeSeasons(chart, timeline) : null, [chart, timeline]);
-  const consultationContext = useMemo(() => chart && timeline ? createGeminiReadingContext(chart, timeline, benefactors, fortuneYear) : null, [chart,timeline,benefactors,fortuneYear]);
-  const facts = useMemo(() => consultationContext ? consultationFacts(consultationContext) : [], [consultationContext]);
-  const visibleConsultation = consultation?.year === fortuneYear ? consultation : undefined;
   const cloudPayload = useMemo<CloudPayload | null>(() => chart && timeline && pendingInput && yunGender !== null ? {
     version: 1, fortuneYear,
     result: { version: 1, savedAt: resultSavedAt, input: pendingInput, yunGender, chart, timeline, benefactors, reading, consultation },
@@ -95,8 +88,7 @@ export default function SajuForm() {
 
   function loadCloudResult(payload: CloudPayload) {
     generation.current++;
-    consultationAbort.current?.abort();
-    setConsultation(payload.result.consultation); setConsultationProgress(""); setConsultationError(""); setIsGenerating(false);
+    setConsultation(payload.result.consultation); setIsGenerating(false);
     resultSourceRef.current = "cloud";
     setResultSource("cloud"); setResultSavedAt(payload.result.savedAt);
     setChart(payload.result.chart); setTimeline(payload.result.timeline);
@@ -110,8 +102,7 @@ export default function SajuForm() {
     if (resultSourceRef.current !== "cloud") return;
     resultSourceRef.current = "local";
     generation.current++;
-    consultationAbort.current?.abort();
-    setConsultation(undefined); setConsultationProgress(""); setConsultationError("");
+    setConsultation(undefined);
     setChart(null); setTimeline(null); setBenefactors([]); setReading(null);
     setPendingInput(null); setYunGender(null); setConsentAccepted(false);
     setReadingError(""); setIsGenerating(false); setResultSource("local");
@@ -157,8 +148,7 @@ export default function SajuForm() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     generation.current++;
-    consultationAbort.current?.abort();
-    setConsultation(undefined); setConsultationProgress(""); setConsultationError("");
+    setConsultation(undefined);
     setResultSource("local");
     resultSourceRef.current = "local";
     setChart(null);
@@ -309,44 +299,6 @@ export default function SajuForm() {
     } finally {
       if (ticket === generation.current) setIsGenerating(false);
     }
-  }
-
-  async function requestConsultation() {
-    if (!consentAccepted || isGenerating || !pendingInput || yunGender === null || !chart || !timeline) return;
-    const ticket = ++generation.current;
-    const controller = new AbortController();
-    consultationAbort.current = controller;
-    let next: Consultation = visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION ? visibleConsultation : { version: 1, analysisVersion: 1, readingStyleVersion: READING_STYLE_VERSION, year: fortuneYear, chapters: [] };
-    setIsGenerating(true); setConsultationError("");
-    try {
-      for (const definition of CHAPTERS) {
-        if (next.chapters.some(c => c.id === definition.id)) continue;
-        setConsultationProgress(`${CHAPTERS.findIndex(c=>c.id===definition.id)+1}/8장 · ${CHAPTER_LABELS[definition.id]}`);
-        const response = await fetch("/api/consultation", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", signal: controller.signal,
-          body: JSON.stringify({ consent: true, input: pendingInput, yunGender, fortuneYear, chapterId: definition.id }) });
-        const body = await response.json();
-        if (ticket !== generation.current) return;
-        if (!response.ok) throw new Error(body.error?.message || "이번 장을 작성하지 못했습니다.");
-        if (body.year !== fortuneYear || body.analysisVersion !== 1 || body.readingStyleVersion !== READING_STYLE_VERSION) throw new Error("상담의 계산 연도가 달라 다시 확인해야 합니다.");
-        const chapter = validateSeasonedChapter(body.chapter, definition.id, facts.map(f=>f.id), definition.id==="lifetime"?lifeSeasons??undefined:undefined);
-        next = { ...next, chapters: [...next.chapters, chapter].sort((a,b)=>CHAPTERS.findIndex(c=>c.id===a.id)-CHAPTERS.findIndex(c=>c.id===b.id)) };
-        setConsultation(next);
-        const savedAt = new Date().toISOString(); setResultSavedAt(savedAt);
-        const saved = resultSourceRef.current === "cloud" || writeSavedSajuResult({ version: 1, savedAt, input: pendingInput, yunGender, chart, timeline, benefactors, reading, consultation: next });
-        setStorageWarning(!saved);
-      }
-      setConsentAccepted(false);
-    } catch(caught) {
-      if (ticket === generation.current) setConsultationError(caught instanceof Error ? caught.message : "상담을 완성하지 못했습니다. 이어서 작성해 주세요.");
-    } finally {
-      if (ticket === generation.current) { setIsGenerating(false); setConsultationProgress(""); }
-    }
-  }
-
-  function pauseConsultation() {
-    generation.current++; consultationAbort.current?.abort();
-    setIsGenerating(false); setConsultationProgress("");
-    setConsultationError("작성을 멈췄습니다. 완성된 장은 유지됩니다. 이어서 작성할 수 있습니다.");
   }
 
   return (
@@ -524,7 +476,7 @@ export default function SajuForm() {
                           {period.index !== 0 && <span className="period-hanja">{period.ganji}</span>}
                           <span className="period-age">사주식 나이 {period.startAge}–{period.endAge}세</span>
                           {localInterpretation && (
-                            <details className="period-local-disclosure" open={!visibleReading && period.status === "current"}>
+                            <details className="period-local-disclosure" open>
                               <summary>이 대운 자세히 읽기</summary>
                               <div className="period-reading local-period-reading">
                                 <p className="period-theme">{localInterpretation.theme}</p>
@@ -557,8 +509,8 @@ export default function SajuForm() {
           </section>
         )}
         {localReading && (
-          <details className="reading-result">
-            <summary>타고난 네 기둥 자세히 읽기</summary>
+          <section className="reading-result" aria-labelledby="pillar-reading-title">
+            <h2 id="pillar-reading-title">타고난 네 기둥 읽기</h2>
             <div className="pillar-reading-grid">
               {localReading.pillarReadings.map((item) => (
                 <article className="pillar-reading-card" key={item.label}>
@@ -567,34 +519,23 @@ export default function SajuForm() {
                 </article>
               ))}
             </div>
-          </details>
-        )}
-        {pendingInput && (
-          <section className="gemini-consent" aria-labelledby="gemini-consent-title">
-            <h2 id="gemini-consent-title">나의 사주를 깊이 풀어보기</h2>
-            <p>동의하면 계산된 사주 네 기둥, 오행 분포, 귀인 근거, 십성·지장간·합충, 강약 비교·격국·용신 후보와 대운·세운·월운 정보가 Google Gemini로 전송되어 해석에 사용됩니다. 원래 입력한 생년월일, 출생 시각과 출생지는 전달하지 않습니다. 해석 문장은 AI가 생성합니다.</p>
-            {reading && !visibleReading && <p className="storage-warning">저장된 해석은 이전 방식 또는 다른 연도로 작성되었습니다. 위에는 현재 계산으로 만든 풀이가 표시됩니다. 아래에서 새 해석을 생성할 수 있으며, 실패해도 이전 저장 해석은 보존됩니다.</p>}
-            <p className="storage-note">{resultSource === "cloud" ? "계정에서 연 결과는 기기에 자동 저장하지 않습니다. 새 풀이를 보관하려면 계정에 저장을 눌러 주세요." : "계산 결과와 완성된 상담 장은 이 브라우저에 저장됩니다. 다른 기기에서도 보려면 로그인 후 계정에 저장을 눌러 주세요."}</p>
-            <label className="consent-option" htmlFor="gemini-consent">
-              <input id="gemini-consent" type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} />
-              계산 정보를 Google Gemini에 보내 해석을 생성하는 데 동의합니다.
-            </label>
-            {readingError && <p className="error" role="alert">{readingError}</p>}
-            <button type="button" onClick={requestGeminiReading} disabled={!consentAccepted || isGenerating}>
-              {isGenerating ? "해석을 만들고 있습니다…" : readingError ? "동의하고 다시 요청" : reading ? "최신 분석으로 다시 해석하기" : "나의 종합 해석 만들기"}
-            </button>
-            {isGenerating && !consultationProgress && <p className="method-help" role="status">평생 흐름과 대운·세운·월운을 함께 풀고 있습니다. 잠시 기다려 주세요.</p>}
-            <div className="consultation-start" id="consultation-start"><h3>한 사람의 삶을 깊이 살피는 8장 상담</h3>
-              <p>나의 성향, 잘 맞는 환경, 앞으로의 변화, 일, 돈, 관계를 쉬운 말로 설명합니다. 생활 속 예시와 지금 해볼 일을 먼저 읽고, 궁금하면 사주 근거를 펼쳐 보세요. 장별로 생성하므로 몇 분 걸릴 수 있고, 완성한 장부터 읽을 수 있습니다.</p>
-              {consultation && !visibleConsultation && <p className="storage-warning">다른 연도의 상담이 저장되어 있습니다. 선택 연도로 작성하면 새로 완성된 장부터 저장됩니다.</p>}
-              {visibleConsultation && visibleConsultation.readingStyleVersion !== READING_STYLE_VERSION && <p className="storage-warning">이전에 작성한 상담입니다. 쉬운 말로 다시 작성할 수 있습니다. 첫 장 작성에 성공하면 새 상담으로 바뀝니다.</p>}
-              <button type="button" onClick={requestConsultation} disabled={!consentAccepted || isGenerating || visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === 8}>{visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === 8 ? "8장 상담 작성 완료" : visibleConsultation && visibleConsultation.readingStyleVersion !== READING_STYLE_VERSION ? "쉬운 말로 8장 다시 작성하기" : visibleConsultation?.chapters.length ? "남은 상담 이어서 작성하기" : "쉬운 말로 8장 상담 시작하기"}</button>
-              {consultationProgress && <><p role="status">{consultationProgress} 작성 중…</p><progress max={8} value={visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION ? visibleConsultation.chapters.length : 0} aria-label="완성된 상담 장"/><button type="button" className="secondary-button" onClick={pauseConsultation}>잠시 멈추기</button></>}
-              {consultationError && <p className="error" role="alert">{consultationError}</p>}
-            </div>
           </section>
         )}
-        {visibleConsultation && visibleConsultation.chapters.length > 0 && <ConsultationPanel consultation={visibleConsultation} facts={facts} />}
+        {pendingInput && (
+          <details className="gemini-consent">
+            <summary>선택 사항 · Gemini 종합 해석 추가하기</summary>
+            <p>동의하면 계산된 사주 네 기둥, 오행 분포, 귀인 근거, 십성·지장간·합충, 강약 비교·격국·용신 후보와 대운·세운·월운 정보가 Google Gemini로 전송되어 해석에 사용됩니다. 원래 입력한 생년월일, 출생 시각과 출생지는 전달하지 않습니다. 해석 문장은 AI가 생성합니다.</p>
+            {reading && !visibleReading && <p className="storage-warning">저장된 해석은 이전 방식 또는 다른 연도로 작성되었습니다. 위에는 현재 계산으로 만든 풀이가 표시됩니다. 아래에서 새 해석을 생성할 수 있으며, 실패해도 이전 저장 해석은 보존됩니다.</p>}
+            <p className="storage-note">{resultSource === "cloud" ? "계정에서 연 결과는 기기에 자동 저장하지 않습니다. 새 해석을 보관하려면 계정에 저장을 눌러 주세요." : "계산 결과와 만든 해석은 이 브라우저에 저장됩니다. 다른 기기에서도 보려면 로그인 후 계정에 저장을 눌러 주세요."}</p>
+            <label className="consent-option" htmlFor="gemini-consent">
+              <input id="gemini-consent" type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} />
+              계산 정보를 Google Gemini에 보내 종합 해석을 만드는 데 동의합니다.
+            </label>
+            {readingError && <p className="error" role="alert">{readingError}</p>}
+            <button type="button" onClick={requestGeminiReading} disabled={!consentAccepted || isGenerating}>{isGenerating ? "종합 해석 작성 중…" : reading ? "종합 해석 다시 작성하기" : "종합 해석 만들기"}</button>
+            {isGenerating && <p className="method-help" role="status">종합 해석을 만들고 있습니다. 잠시 기다려 주세요.</p>}
+          </details>
+        )}
         {visibleReading && (
           <section className="reading-result" aria-labelledby="reading-title">
             <p className="result-label">나의 사주 종합 분석</p>
