@@ -26,3 +26,5 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] 014-readable-manse-report.md — 쉬운 8장 상담과 만세력 결과 화면
 
 - [x] 015-life-seasons-and-counselor-voice.md — 개인 대운의 인생 4계절 그래프와 쉬우면서 솔직한 상담
+
+- [x] 016-continuous-reading.md — 운 항목 현황 점검과 동의 후 자동 생성·연속 읽기 (가상 자료로 검증, 실제 Gemini 생성·참가자 화면 확인 전)

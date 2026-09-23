@@ -699,10 +699,11 @@ select:focus-visible {
 .fortune-panel { padding: 28px 0; }
 .fortune-panel h2 { margin: 8px 0 18px; font-size: clamp(25px, 4vw, 34px); }
 .fortune-synthesis { padding: 24px; background: #e8f3ef; border-left: 4px solid var(--primary); border-radius: 12px; line-height: 1.85; white-space: pre-wrap; }
-.fortune-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0; }
-.fortune-tabs button { flex: 1 1 140px; min-height: 48px; padding: 12px 16px; margin: 0; background: var(--surface); color: var(--primary); border: 1px solid var(--border); }
-.fortune-tabs button[aria-pressed="true"] { color: #fff; background: var(--primary); }
-.fortune-content { line-height: 1.8; }
+.fortune-section-nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0; }
+.fortune-section-nav a { flex: 1 1 140px; min-height: 48px; padding: 12px 16px; color: var(--primary); border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700; text-decoration: none; }
+.fortune-section-nav a:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.fortune-content { line-height: 1.8; scroll-margin-top: 20px; }
+.fortune-content + .fortune-content { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 16px; }
 .fortune-content > h3 { margin-top: 24px; }
 .fortune-prose { white-space: pre-wrap; line-height: 1.9; }
 .lifetime-grid, .month-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
@@ -723,8 +724,8 @@ select:focus-visible {
 @media (max-width: 520px) {
   .lifetime-grid, .month-grid { grid-template-columns: 1fr; }
   .fortune-synthesis { padding: 18px; }
-  .fortune-tabs { gap: 6px; }
-  .fortune-tabs button { flex-basis: 100%; }
+  .fortune-section-nav { gap: 6px; }
+  .fortune-section-nav a { flex-basis: 100%; }
   body {
     padding: 16px;
   }
@@ -794,7 +795,7 @@ select:focus-visible {
 .deep-analysis-grid { display: grid; gap: 16px; }
 .deep-analysis-grid > article { border: 1px solid var(--border); border-radius: 14px; padding: 20px; background: var(--surface); }
 .deep-analysis p, .consultation-panel p { line-height: 1.85; overflow-wrap: anywhere; }
-.deep-analysis summary, .consultation-chapter > summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
+.deep-analysis summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
 .analysis-table-wrap { overflow-x: auto; }
 .analysis-table-wrap table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .analysis-table-wrap th, .analysis-table-wrap td { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); }
@@ -804,7 +805,7 @@ select:focus-visible {
 .consultation-toc a { color: var(--primary); padding: 12px; border: 1px solid var(--border); border-radius: 10px; text-decoration: none; line-height: 1.6; }
 .consultation-toc a[aria-disabled="true"] { color: var(--muted); background: var(--soft); }
 .consultation-chapter { border-top: 1px solid var(--border); scroll-margin-top: 20px; }
-.consultation-chapter > summary { font-weight: 700; font-size: 20px; padding: 20px 0; }
+.consultation-chapter > h3 { font-weight: 700; font-size: 20px; padding: 20px 0; }
 .consultation-chapter article { padding: 8px 0 32px; }
 .consultation-prose { white-space: pre-line; font-size: 17px; }
 .consultation-aside, .consultation-question { margin: 20px 0; padding: 16px 20px; border-radius: 12px; background: #f6f3ed; }
@@ -893,14 +894,14 @@ button, a, summary { touch-action: manipulation; }
 .deep-analysis-grid h3 { margin-top: 0; }
 .consultation-toc a { display: flex; align-items: center; gap: 12px; background: #faf8f4; font-size: 15px; }
 .chapter-number { color: var(--muted); font-family: Georgia, serif; font-size: 22px; }
-.consultation-chapter > summary { padding: 24px 0; font-size: 22px; }
+.consultation-chapter > h3 { padding: 24px 0; font-size: 22px; }
 .chapter-summary { border-left: 3px solid var(--primary); background: #f7f2e8; padding: 20px 24px; margin: 4px 0 28px; }
 .chapter-summary strong { color: var(--primary); font-size: 13px; }
 .chapter-summary p { font-size: 19px; line-height: 1.8; margin: 10px 0 0; }
 .consultation-chapter article { max-width: 700px; margin: auto; padding: 8px 0 32px; }
 .consultation-chapter article + article { border-top: 1px solid var(--border); padding-top: 24px; }
 .section-number { color: var(--muted); font-size: 12px; letter-spacing: .06em; margin-bottom: 8px; }
-.consultation-chapter article h3 { margin-top: 0; font-size: 22px; line-height: 1.55; }
+.consultation-chapter article h4 { margin-top: 0; font-size: 22px; line-height: 1.55; }
 .consultation-prose { line-height: 1.95; font-size: 17px; }
 .consultation-prose p { margin: 0 0 18px; }
 .consultation-example { border-left: 2px solid var(--border); padding: 4px 0 4px 18px; margin: 24px 0; }
@@ -977,6 +978,6 @@ button, a, summary { touch-action: manipulation; }
   .daily-calendar td small { font-size: 11px; }
   .chapter-summary { padding: 16px; }
   .chapter-summary p { font-size: 17px; }
-  .consultation-chapter > summary { font-size: 19px; }
+  .consultation-chapter > h3 { font-size: 19px; }
   .consultation-prose { font-size: 16px; }
 }

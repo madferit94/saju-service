@@ -311,8 +311,9 @@ export default function SajuForm() {
     }
   }
 
-  async function requestConsultation() {
-    if (!consentAccepted || isGenerating || !pendingInput || yunGender === null || !chart || !timeline) return;
+  async function requestConsultation(approved = consentAccepted) {
+    if (!approved || isGenerating || !pendingInput || yunGender === null || !chart || !timeline) return;
+    if (visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === CHAPTERS.length) return;
     const ticket = ++generation.current;
     const controller = new AbortController();
     consultationAbort.current = controller;
@@ -321,7 +322,7 @@ export default function SajuForm() {
     try {
       for (const definition of CHAPTERS) {
         if (next.chapters.some(c => c.id === definition.id)) continue;
-        setConsultationProgress(`${CHAPTERS.findIndex(c=>c.id===definition.id)+1}/8장 · ${CHAPTER_LABELS[definition.id]}`);
+        setConsultationProgress(CHAPTER_LABELS[definition.id]);
         const response = await fetch("/api/consultation", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", signal: controller.signal,
           body: JSON.stringify({ consent: true, input: pendingInput, yunGender, fortuneYear, chapterId: definition.id }) });
         const body = await response.json();
@@ -347,6 +348,15 @@ export default function SajuForm() {
     generation.current++; consultationAbort.current?.abort();
     setIsGenerating(false); setConsultationProgress("");
     setConsultationError("작성을 멈췄습니다. 완성된 장은 유지됩니다. 이어서 작성할 수 있습니다.");
+  }
+
+  function changeGeminiConsent(approved: boolean) {
+    setConsentAccepted(approved);
+    if (!approved) {
+      if (consultationProgress) pauseConsultation();
+      return;
+    }
+    void requestConsultation(true);
   }
 
   return (
@@ -524,7 +534,7 @@ export default function SajuForm() {
                           {period.index !== 0 && <span className="period-hanja">{period.ganji}</span>}
                           <span className="period-age">사주식 나이 {period.startAge}–{period.endAge}세</span>
                           {localInterpretation && (
-                            <details className="period-local-disclosure" open={!visibleReading && period.status === "current"}>
+                            <details className="period-local-disclosure" open>
                               <summary>이 대운 자세히 읽기</summary>
                               <div className="period-reading local-period-reading">
                                 <p className="period-theme">{localInterpretation.theme}</p>
@@ -557,8 +567,8 @@ export default function SajuForm() {
           </section>
         )}
         {localReading && (
-          <details className="reading-result">
-            <summary>타고난 네 기둥 자세히 읽기</summary>
+          <section className="reading-result" aria-labelledby="pillar-reading-title">
+            <h2 id="pillar-reading-title">타고난 네 기둥 읽기</h2>
             <div className="pillar-reading-grid">
               {localReading.pillarReadings.map((item) => (
                 <article className="pillar-reading-card" key={item.label}>
@@ -567,7 +577,7 @@ export default function SajuForm() {
                 </article>
               ))}
             </div>
-          </details>
+          </section>
         )}
         {pendingInput && (
           <section className="gemini-consent" aria-labelledby="gemini-consent-title">
@@ -576,22 +586,22 @@ export default function SajuForm() {
             {reading && !visibleReading && <p className="storage-warning">저장된 해석은 이전 방식 또는 다른 연도로 작성되었습니다. 위에는 현재 계산으로 만든 풀이가 표시됩니다. 아래에서 새 해석을 생성할 수 있으며, 실패해도 이전 저장 해석은 보존됩니다.</p>}
             <p className="storage-note">{resultSource === "cloud" ? "계정에서 연 결과는 기기에 자동 저장하지 않습니다. 새 풀이를 보관하려면 계정에 저장을 눌러 주세요." : "계산 결과와 완성된 상담 장은 이 브라우저에 저장됩니다. 다른 기기에서도 보려면 로그인 후 계정에 저장을 눌러 주세요."}</p>
             <label className="consent-option" htmlFor="gemini-consent">
-              <input id="gemini-consent" type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} />
-              계산 정보를 Google Gemini에 보내 해석을 생성하는 데 동의합니다.
+              <input id="gemini-consent" type="checkbox" checked={consentAccepted} onChange={(event) => changeGeminiConsent(event.target.checked)} />
+              계산 정보를 Google Gemini에 보내 깊은 풀이를 자동으로 작성하는 데 동의합니다.
             </label>
+            <p className="method-help">동의하면 아래에서 긴 풀이를 바로 작성합니다. 완성된 내용부터 순서대로 읽을 수 있습니다.</p>
             {readingError && <p className="error" role="alert">{readingError}</p>}
-            <button type="button" onClick={requestGeminiReading} disabled={!consentAccepted || isGenerating}>
-              {isGenerating ? "해석을 만들고 있습니다…" : readingError ? "동의하고 다시 요청" : reading ? "최신 분석으로 다시 해석하기" : "나의 종합 해석 만들기"}
-            </button>
-            {isGenerating && !consultationProgress && <p className="method-help" role="status">평생 흐름과 대운·세운·월운을 함께 풀고 있습니다. 잠시 기다려 주세요.</p>}
-            <div className="consultation-start" id="consultation-start"><h3>한 사람의 삶을 깊이 살피는 8장 상담</h3>
-              <p>나의 성향, 잘 맞는 환경, 앞으로의 변화, 일, 돈, 관계를 쉬운 말로 설명합니다. 생활 속 예시와 지금 해볼 일을 먼저 읽고, 궁금하면 사주 근거를 펼쳐 보세요. 장별로 생성하므로 몇 분 걸릴 수 있고, 완성한 장부터 읽을 수 있습니다.</p>
+            <div className="consultation-start" id="consultation-start"><h3>이어서 읽는 나의 깊은 풀이</h3>
+              <p>나의 성향, 잘 맞는 환경, 앞으로의 변화, 일, 돈, 관계를 차례대로 풀어드립니다. 완성된 내용부터 아래에 바로 표시됩니다.</p>
               {consultation && !visibleConsultation && <p className="storage-warning">다른 연도의 상담이 저장되어 있습니다. 선택 연도로 작성하면 새로 완성된 장부터 저장됩니다.</p>}
-              {visibleConsultation && visibleConsultation.readingStyleVersion !== READING_STYLE_VERSION && <p className="storage-warning">이전에 작성한 상담입니다. 쉬운 말로 다시 작성할 수 있습니다. 첫 장 작성에 성공하면 새 상담으로 바뀝니다.</p>}
-              <button type="button" onClick={requestConsultation} disabled={!consentAccepted || isGenerating || visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === 8}>{visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === 8 ? "8장 상담 작성 완료" : visibleConsultation && visibleConsultation.readingStyleVersion !== READING_STYLE_VERSION ? "쉬운 말로 8장 다시 작성하기" : visibleConsultation?.chapters.length ? "남은 상담 이어서 작성하기" : "쉬운 말로 8장 상담 시작하기"}</button>
-              {consultationProgress && <><p role="status">{consultationProgress} 작성 중…</p><progress max={8} value={visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION ? visibleConsultation.chapters.length : 0} aria-label="완성된 상담 장"/><button type="button" className="secondary-button" onClick={pauseConsultation}>잠시 멈추기</button></>}
+              {visibleConsultation && visibleConsultation.readingStyleVersion !== READING_STYLE_VERSION && <p className="storage-warning">이전에 작성한 풀이입니다. 동의하면 새 방식으로 다시 작성합니다. 첫 주제가 완성될 때까지 기존 내용은 유지됩니다.</p>}
+              {consultationProgress && <><p role="status">{consultationProgress} 작성 중…</p><progress max={CHAPTERS.length} value={visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION ? visibleConsultation.chapters.length : 0} aria-label="완성된 풀이 주제"/><button type="button" className="secondary-button" onClick={pauseConsultation}>잠시 멈추기</button></>}
               {consultationError && <p className="error" role="alert">{consultationError}</p>}
+              {consultationError && consentAccepted && !isGenerating && <button type="button" onClick={() => void requestConsultation(true)}>남은 풀이 다시 작성하기</button>}
+              {visibleConsultation?.readingStyleVersion === READING_STYLE_VERSION && visibleConsultation.chapters.length === CHAPTERS.length && <p className="method-help" role="status">깊은 풀이가 모두 작성됐습니다. 아래에서 이어서 읽어보세요.</p>}
             </div>
+            <details className="fortune-evidence"><summary>기존 방식의 짧은 종합 해석도 만들기</summary><p>이 기능은 깊은 풀이와 별도로 Gemini를 한 번 더 사용합니다.</p><button type="button" onClick={requestGeminiReading} disabled={!consentAccepted || isGenerating}>{isGenerating && !consultationProgress ? "짧은 해석 작성 중…" : reading ? "짧은 해석 다시 작성하기" : "짧은 해석 만들기"}</button></details>
+            {isGenerating && !consultationProgress && <p className="method-help" role="status">짧은 종합 해석을 만들고 있습니다. 잠시 기다려 주세요.</p>}
           </section>
         )}
         {visibleConsultation && visibleConsultation.chapters.length > 0 && <ConsultationPanel consultation={visibleConsultation} facts={facts} />}

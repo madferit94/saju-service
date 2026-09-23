@@ -64,7 +64,9 @@ function formHarness() {
     async startReading() {
       nodes(tree).find(node => node.props.id === "gemini-consent")!.props.onChange({ target: { checked: true } });
       render();
-      const request = nodes(tree).find(node => node.type === "button" && node.props.children === "나의 종합 해석 만들기")!.props.onClick();
+      nodes(tree).find(node => node.type === "button" && node.props.children === "잠시 멈추기")!.props.onClick();
+      render();
+      const request = nodes(tree).find(node => node.type === "button" && node.props.children === "짧은 해석 만들기")!.props.onClick();
       render();
       return { request };
     },
@@ -73,11 +75,14 @@ function formHarness() {
     async startConsultation() {
       nodes(tree).find(node => node.props.id === "gemini-consent")!.props.onChange({ target: { checked: true } });
       render();
-      const button = nodes(tree).find(node => node.type === "button" && ["쉬운 말로 8장 상담 시작하기", "쉬운 말로 8장 다시 작성하기", "남은 상담 이어서 작성하기"].includes(node.props.children))!;
-      assert.ok(button && !button.props.disabled, "상담 작성 버튼이 활성화되어야 한다");
-      const request = button.props.onClick();
-      render();
-      return { request };
+      assert.ok(!nodes(tree).some(node => node.type === "button" && String(node.props.children).includes("8장 상담 시작")), "별도 시작 버튼은 없어야 한다");
+      return { request: turn() };
+    },
+    retryConsultation() {
+      const button = nodes(tree).find(node => node.type === "button" && node.props.children === "남은 풀이 다시 작성하기");
+      assert.ok(button, "오류 뒤에는 이어 쓰기 버튼이 보여야 한다");
+      button.props.onClick(); render();
+      return { request: turn() };
     },
     pauseConsultation() { nodes(tree).find(node => node.type === "button" && node.props.children === "잠시 멈추기")!.props.onClick(); render(); },
   };
@@ -106,6 +111,29 @@ test("계정 결과를 연 직후 렌더 전에 계정이 바뀌어도 이전 �
   form.render();
   assert.equal(form.account().current, null);
   assert.equal(form.writes, 0);
+});
+
+test("동의 전에는 상담을 요청하지 않고 체크 직후 한 번만 자동 시작한다", async () => {
+  const form = formHarness(); form.account().onLoad(payload()); form.render();
+  assert.equal(form.requests.length, 0);
+  const { request } = await form.startConsultation();
+  assert.equal(form.requests.length, 1);
+  assert.equal(form.requests[0].url, "/api/consultation");
+  form.render(); form.render();
+  nodes(form.render()).find(node => node.props.id === "gemini-consent")!.props.onChange({ target: { checked: true } });
+  form.render();
+  assert.equal(form.requests.length, 1, "진행 중 다시 체크해도 같은 장을 중복 요청하지 않는다");
+  form.respond({ error: { message: "테스트 종료" } }, false);
+  await request; await turn(); form.render();
+});
+
+test("같은 연도와 문체의 상담이 완성돼 있으면 동의해도 Gemini를 재호출하지 않는다", async () => {
+  const form = formHarness(), value = payload();
+  value.result.consultation = { version: 1, analysisVersion: 1, readingStyleVersion: 3, year: 2026, chapters: CHAPTERS.map((_, index) => consultationChapter(index)) };
+  form.account().onLoad(value); form.render();
+  await form.startConsultation();
+  assert.equal(form.requests.length, 0);
+  assert.equal(form.account().current.result.consultation.chapters.length, 8);
 });
 
 test("계정에서 연 결과의 AI 성공·실패는 브라우저 저장본을 덮어쓰지 않는다", async () => {
@@ -156,10 +184,10 @@ test("계정에서 연 상담은 첫 장 뒤 오류가 나도 완성 장을 남�
   assert.equal(form.requests.at(-1)!.body.chapterId, "strength");
   assert.equal(form.account().current.result.consultation.chapters.length, 1);
   form.respond({ error: { message: "가상 네트워크 오류" } }, false);
-  await first.request; form.render();
+  await first.request; await turn(); form.render();
   assert.equal(form.account().busy, false);
   assert.equal(form.writes, 0);
-  const resumed = await form.startConsultation();
+  const resumed = form.retryConsultation();
   assert.equal(form.requests.at(-1)!.body.chapterId, "strength");
   form.respond({ error: { message: "테스트 종료" } }, false);
   await resumed.request; form.render();
@@ -216,7 +244,7 @@ test("기존 쉬운 말 8장도 새 상담 첫 장 성공 전까지 그대로 �
   form.respond({ error: { message: "가상 재작성 실패" } }, false);
   await first.request; form.render();
   assert.deepEqual(form.account().current.result.consultation, value.result.consultation);
-  const retry = await form.startConsultation();
+  const retry = form.retryConsultation();
   form.respond({ chapter: consultationChapter(0), readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
   await turn(); form.render();
   const current = form.account().current.result.consultation;
