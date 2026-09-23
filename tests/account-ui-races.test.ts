@@ -46,7 +46,7 @@ function formHarness() {
       if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
       if (name === "./account-panel") return { default: accountType, __esModule: true };
       if (name === "./fortune-panel") return { default: Symbol("FortunePanel"), __esModule: true };
-      if (["./deep-analysis-panel", "./consultation-panel", "./manse-panel", "./flow-overview"].includes(name)) return { default: Symbol(name), __esModule: true };
+      if (["./deep-analysis-panel", "./consultation-panel", "./manse-panel", "./flow-overview", "./life-seasons-panel"].includes(name)) return { default: Symbol(name), __esModule: true };
       if (name === "../lib/saju/persistence") return { readSavedSajuResult: () => null, clearSavedSajuResult: () => true, writeSavedSajuResult: () => { writes++; return true; } };
       return requireActual(name);
     },
@@ -151,7 +151,7 @@ test("계정에서 연 상담은 첫 장 뒤 오류가 나도 완성 장을 남�
   form.account().onLoad(value); form.render();
   const first = await form.startConsultation();
   assert.equal(form.requests.at(-1)!.body.chapterId, "natal");
-  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 2, analysisVersion: 1, year: 2026 });
+  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
   await turn(); form.render();
   assert.equal(form.requests.at(-1)!.body.chapterId, "strength");
   assert.equal(form.account().current.result.consultation.chapters.length, 1);
@@ -173,7 +173,7 @@ test("상담 중 계정 전환 뒤 도착한 응답은 새 결과를 덮거나 �
   const { request } = await form.startConsultation();
   form.account().onClearCloud(); form.render();
   form.account().onLoad(b); form.render();
-  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 2, analysisVersion: 1, year: 2026 });
+  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
   await request; form.render();
   assert.equal(form.account().current.result.input.date, b.result.input.date);
   assert.equal(form.account().current.result.consultation, undefined);
@@ -185,7 +185,7 @@ test("상담 작성 중 멈추기를 누르면 늦은 응답을 버리고 남은
   const form = formHarness(); form.account().onLoad(payload()); form.render();
   const { request } = await form.startConsultation();
   form.pauseConsultation();
-  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 2, analysisVersion: 1, year: 2026 });
+  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
   await request; form.render();
   assert.equal(form.account().busy, false);
   assert.equal(form.account().current.result.consultation, undefined);
@@ -202,6 +202,32 @@ function legacyPayload(): CloudPayload {
   return value;
 }
 
+function readableV2Payload(): CloudPayload {
+  const value = payload();
+  value.result.consultation = { version: 1, analysisVersion: 1, readingStyleVersion: 2, year: 2026, chapters: CHAPTERS.map((_, index) => consultationChapter(index)) };
+  return value;
+}
+
+test("기존 쉬운 말 8장도 새 상담 첫 장 성공 전까지 그대로 남는다", async () => {
+  const form = formHarness(), value = readableV2Payload();
+  form.account().onLoad(value); form.render();
+  const first = await form.startConsultation();
+  assert.equal(form.requests.at(-1)!.body.chapterId, "natal");
+  form.respond({ error: { message: "가상 재작성 실패" } }, false);
+  await first.request; form.render();
+  assert.deepEqual(form.account().current.result.consultation, value.result.consultation);
+  const retry = await form.startConsultation();
+  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
+  await turn(); form.render();
+  const current = form.account().current.result.consultation;
+  assert.equal(current.readingStyleVersion, 3);
+  assert.equal(current.chapters.length, 1);
+  assert.equal(current.chapters[0].id, "natal");
+  form.respond({ error: { message: "테스트 종료" } }, false);
+  await retry.request; form.render();
+  assert.equal(form.writes, 0);
+});
+
 test("예전 8장 다시 작성이 첫 장부터 실패해도 기존 상담 8장을 보존한다", async () => {
   const form = formHarness(), value = legacyPayload();
   form.account().onLoad(value); form.render();
@@ -217,10 +243,10 @@ test("예전 8장 다시 작성이 첫 장부터 실패해도 기존 상담 8장
 test("다시 작성의 첫 성공 때 새 방식 장만 저장하고 예전 나머지 장을 섞지 않는다", async () => {
   const form = formHarness(); form.account().onLoad(legacyPayload()); form.render();
   const { request } = await form.startConsultation();
-  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 2, analysisVersion: 1, year: 2026 });
+  form.respond({ chapter: consultationChapter(0), readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
   await turn(); form.render();
   const current = form.account().current.result.consultation;
-  assert.equal(current.readingStyleVersion, 2);
+  assert.equal(current.readingStyleVersion, 3);
   assert.equal(current.chapters.length, 1);
   assert.equal(current.chapters[0].id, "natal");
   assert.ok(current.chapters[0].summary);
@@ -236,13 +262,13 @@ test("재작성 중 멈춘 첫 요청의 지연 응답은 이어서 시작한 �
   const first = await form.startConsultation();
   form.pauseConsultation();
   const second = await form.startConsultation();
-  form.respondAt(0, { chapter: consultationChapter(0), readingStyleVersion: 2, analysisVersion: 1, year: 2026 });
+  form.respondAt(0, { chapter: consultationChapter(0), readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
   await first.request; form.render();
   assert.deepEqual(form.account().current.result.consultation, original.result.consultation);
   assert.equal(form.account().busy, true, "이전 요청의 finally가 현재 진행 상태를 해제하지 않는다");
   assert.equal(form.requests.length, 2);
   assert.equal(form.requests.at(-1)!.body.chapterId, "natal");
-  form.respond({ chapter: { ...consultationChapter(0), summary: undefined }, readingStyleVersion: 2, analysisVersion: 1, year: 2026 });
+  form.respond({ chapter: { ...consultationChapter(0), summary: undefined }, readingStyleVersion: 3, analysisVersion: 1, year: 2026 });
   await second.request; form.render();
   assert.deepEqual(form.account().current.result.consultation, original.result.consultation);
   assert.equal(form.requests.length, 2);

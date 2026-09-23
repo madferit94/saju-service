@@ -15,11 +15,13 @@ import {
 import { calculateBenefactors, type Benefactor } from "../lib/saju/benefactors";
 import { createGeminiReadingContext, validateGeminiSajuReading, type GeminiSajuReading } from "../lib/saju/gemini-reading";
 import { analyzeNatal } from "../lib/saju/deep-analysis";
-import { CHAPTERS, CHAPTER_LABELS, READING_STYLE_VERSION, consultationFacts, validatePlainChapter, type Consultation } from "../lib/saju/consultation";
+import { CHAPTERS, CHAPTER_LABELS, READING_STYLE_VERSION, consultationFacts, validateSeasonedChapter, type Consultation } from "../lib/saju/consultation";
 import DeepAnalysisPanel from "./deep-analysis-panel";
 import ConsultationPanel from "./consultation-panel";
 import MansePanel from "./manse-panel";
 import FlowOverview from "./flow-overview";
+import LifeSeasonsPanel from "./life-seasons-panel";
+import { buildLifeSeasons } from "../lib/saju/life-seasons";
 import { buildLocalReading } from "../lib/saju/reading";
 import { clearSavedSajuResult, readSavedSajuResult, writeSavedSajuResult } from "../lib/saju/persistence";
 import type { Birthplace } from "../lib/saju/birth-moment";
@@ -82,6 +84,7 @@ export default function SajuForm() {
   const fortune = useMemo(() => chart && timeline ? buildFortuneReport(chart, timeline, fortuneYear) : null, [chart, timeline, fortuneYear]);
   const visibleReading = reading?.readingVersion === 2 && reading.analysisVersion === 1 && reading.fortuneYear === fortuneYear ? reading : null;
   const deepAnalysis = useMemo(() => chart ? analyzeNatal(chart) : null, [chart]);
+  const lifeSeasons = useMemo(() => chart && timeline ? buildLifeSeasons(chart, timeline) : null, [chart, timeline]);
   const consultationContext = useMemo(() => chart && timeline ? createGeminiReadingContext(chart, timeline, benefactors, fortuneYear) : null, [chart,timeline,benefactors,fortuneYear]);
   const facts = useMemo(() => consultationContext ? consultationFacts(consultationContext) : [], [consultationContext]);
   const visibleConsultation = consultation?.year === fortuneYear ? consultation : undefined;
@@ -325,7 +328,7 @@ export default function SajuForm() {
         if (ticket !== generation.current) return;
         if (!response.ok) throw new Error(body.error?.message || "이번 장을 작성하지 못했습니다.");
         if (body.year !== fortuneYear || body.analysisVersion !== 1 || body.readingStyleVersion !== READING_STYLE_VERSION) throw new Error("상담의 계산 연도가 달라 다시 확인해야 합니다.");
-        const chapter = validatePlainChapter(body.chapter, definition.id, facts.map(f=>f.id));
+        const chapter = validateSeasonedChapter(body.chapter, definition.id, facts.map(f=>f.id), definition.id==="lifetime"?lifeSeasons??undefined:undefined);
         next = { ...next, chapters: [...next.chapters, chapter].sort((a,b)=>CHAPTERS.findIndex(c=>c.id===a.id)-CHAPTERS.findIndex(c=>c.id===b.id)) };
         setConsultation(next);
         const savedAt = new Date().toISOString(); setResultSavedAt(savedAt);
@@ -480,6 +483,7 @@ export default function SajuForm() {
           </section>
         )}
         {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
+        {lifeSeasons && <LifeSeasonsPanel report={lifeSeasons} />}
         {chart && timeline && fortune && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={setFortuneYear} disabled={isGenerating} />}
         {fortune && (
           <div className="integrated-reading">

@@ -24,3 +24,5 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] `009-lunar-birth-date.md` 양력·음력 생일과 평달·윤달·모름 입력, 윤달 모름 후보 비교
 
 - [x] 014-readable-manse-report.md — 쉬운 8장 상담과 만세력 결과 화면
+
+- [x] 015-life-seasons-and-counselor-voice.md — 개인 대운의 인생 4계절 그래프와 쉬우면서 솔직한 상담

@@ -4,9 +4,10 @@ import { calculate, type SajuInput } from "../lib/saju/chart";
 import { calculateDaewoon } from "../lib/saju/daewoon";
 import { calculateBenefactors } from "../lib/saju/benefactors";
 import { createGeminiReadingContext } from "../lib/saju/gemini-reading";
-import { CHAPTERS, consultationFacts, consultationPrompt, consultationSchema, validateChapter, validatePlainChapter, validateConsultation, type ChapterId, type Consultation, type ConsultationChapter } from "../lib/saju/consultation";
+import { CHAPTERS, READING_STYLE_VERSION, consultationFacts, consultationPrompt, consultationSchema, validateChapter, validatePlainChapter, validateSeasonedChapter, validateConsultation, type ChapterId, type Consultation, type ConsultationChapter } from "../lib/saju/consultation";
 import { isSavedSajuResult, readSavedSajuResult, writeSavedSajuResult, type SavedSajuResult } from "../lib/saju/persistence";
 import { resultFingerprint, validateCloudPayload, type CloudPayload } from "../lib/account/results";
+import { buildLifeSeasons } from "../lib/saju/life-seasons";
 
 const input: SajuInput = { date: "1994-12-01", time: "08:37", calendar: "solar", topic: "general", question: "외부 전송하지 않을 내 개인 질문", birthplace: { countryCode: "KR", countryName: "대한민국", city: "비공개 도시명", province: "수도권", timezone: "Asia/Seoul", longitude: 126.978 } };
 const chart = calculate(input);
@@ -106,6 +107,70 @@ test("상담 프롬프트는 개인 입력을 보내지 않고 판정 보류·�
   }
 });
 
+test("새 상담은 경력 사칭 없이 쉬운 생활말과 불편한 조건을 요청한다", () => {
+  assert.equal(READING_STYLE_VERSION, 3);
+  const prompt = consultationPrompt(context, "lifetime");
+  for (const phrase of ["30년", "사칭", "쉬운", "반대", "부담", "실제 경험", "현재", "계절"]) {
+    assert.ok(prompt.includes(phrase), phrase);
+  }
+  assert.ok(!prompt.includes(input.date));
+  assert.ok(!prompt.includes(input.birthplace!.city));
+});
+
+test("평생 상담에는 개인 대운 4계절과 현재 지점을 동일한 계산으로 전달한다", () => {
+  const report = buildLifeSeasons(chart, timeline);
+  const prompt = consultationPrompt(context, "lifetime", report);
+  assert.ok(report.current);
+  assert.ok(prompt.includes(report.current.seasonLabel));
+  assert.ok(prompt.includes(String(report.current.currentYear)));
+  assert.ok(prompt.includes(String(report.current.periodIndex)));
+  assert.ok(prompt.includes(report.periods.find(period => period.index === report.current!.periodIndex)!.ganji));
+  assert.ok(!prompt.includes(input.date));
+  assert.ok(!prompt.includes(input.birthplace!.city));
+});
+
+test("새 평생 상담은 현재 대운과 그 사람의 계절을 실제 본문에 짚어야 한다", () => {
+  const seasons = buildLifeSeasons(chart, timeline);
+  const active = seasons.periods.find(period => period.index === seasons.current!.periodIndex)!;
+  const activePosition = seasons.periods.findIndex(period => period.index === active.index);
+  const other = seasons.periods.slice(Math.max(0, activePosition - 1), activePosition + 2).find(period => period.seasonLabel !== active.seasonLabel);
+  const base = plainChapter("lifetime");
+  const grounded = {
+    ...base,
+    summary: `${active.startYear}년부터 ${active.endYear}년까지는 ${active.seasonLabel}의 주제가 앞에 옵니다. 익힌 방법을 실제 생활에 맞춰 보고 맡을 일의 범위를 확인해 보세요.`,
+    sections: base.sections.map((section, index) => index === 0 ? {
+      ...section,
+      text: section.text + `\n\n현재 ${timeline.currentYear}년은 ${active.startYear}~${active.endYear}년 ${active.korean} 대운 안에 있습니다. 이 대운의 주제는 ${active.seasonLabel}이며, ${other ? `${other.seasonLabel}의 주제였던 이웃 대운과 비교해` : "실제 경험과 비교해"} 배움과 실행의 순서가 실제 생활에서 어떻게 달라지는지 확인합니다.`,
+      evidenceIds: [...section.evidenceIds, `period_${active.index}`],
+    } : section),
+  };
+  assert.equal(validateSeasonedChapter(grounded, "lifetime", validIds, seasons), grounded);
+  assert.throws(() => validateSeasonedChapter(base, "lifetime", validIds, seasons), /계절|현재|대운/);
+  assert.throws(() => validateSeasonedChapter({ ...grounded, summary: "이 장에서는 삶의 흐름과 현재 시기에 맞는 선택의 조건을 차분하게 살펴봅니다." }, "lifetime", validIds, seasons), /요약|구체|생활|계절/);
+  const otherSeason = ["봄", "여름", "가을", "겨울"].find(label => label !== active.seasonLabel)!;
+  const wrong = { ...grounded, summary: grounded.summary.replace(active.seasonLabel, otherSeason), sections: grounded.sections.map(section => ({ ...section, text: section.text.replaceAll(active.seasonLabel, otherSeason) })) };
+  assert.throws(() => validateSeasonedChapter(wrong, "lifetime", validIds, seasons), /계절|현재|대운/);
+  const contradictory = { ...grounded, sections: grounded.sections.map((section, index) => index === 0 ? { ...section, text: section.text + `\n\n현재 계절은 ${otherSeason}.` } : section) };
+  assert.throws(() => validateSeasonedChapter(contradictory, "lifetime", validIds, seasons), /다르게|계절/);
+
+  const storage = memory();
+  const completeV3: Consultation = { ...consultation(), readingStyleVersion: 3, chapters: [grounded] };
+  assert.equal(writeSavedSajuResult(saved({ consultation: completeV3 }), storage), true);
+  assert.deepEqual(readSavedSajuResult(storage)?.consultation, completeV3);
+  const missingSeasonV3: Consultation = { ...completeV3, chapters: [base] };
+  assert.equal(writeSavedSajuResult(saved({ consultation: missingSeasonV3 }), storage), false);
+  assert.deepEqual(readSavedSajuResult(storage)?.consultation, completeV3, "손상된 새 상담이 정상 저장본을 덮지 않는다");
+});
+
+test("기존 문체 2 평생 장은 새 계절 표기가 없어도 저장해 다시 읽을 수 있다", () => {
+  const old: Consultation = { ...consultation(), readingStyleVersion: 2, chapters: [plainChapter("lifetime")] };
+  assert.equal(validateConsultation(old, validIds), old);
+  const value = saved({ consultation: old });
+  const target = memory();
+  assert.equal(writeSavedSajuResult(value, target), true);
+  assert.deepEqual(readSavedSajuResult(target)?.consultation, old);
+});
+
 test("과거 저장본을 유지하고 부분 상담을 로컬·계정 형식에 손실 없이 보존한다", async () => {
   const target = memory();
   const legacy = saved();
@@ -146,18 +211,21 @@ test("쉬운 상담 장은 충분한 요약과 기존 상세 근거를 모두 �
   assert.throws(() => validatePlainChapter({ ...readable, sections: [{ ...readable.sections[0], evidenceIds: ["invented_a", "invented_b"] }, ...readable.sections.slice(1)] }, "natal", validIds));
 });
 
-test("쉬운 상담 버전만 요약을 강제하고 이전 상담의 제목·내용을 그대로 읽는다", () => {
+test("기존 1·2 문체와 새 3 문체를 모두 읽되 잘못된 문체를 거부한다", () => {
   const legacy = consultation([chapter(), chapter("strength")]);
   assert.equal(validateConsultation(legacy, validIds), legacy);
-  const readable = { ...legacy, readingStyleVersion: 2, chapters: legacy.chapters.map(ch => plainChapter(ch.id)) };
-  assert.equal(validateConsultation(readable, validIds), readable);
+  const readableV2 = { ...legacy, readingStyleVersion: 2 as const, chapters: legacy.chapters.map(ch => plainChapter(ch.id)) };
+  assert.equal(validateConsultation(readableV2, validIds), readableV2);
+  const readableV3 = { ...readableV2, readingStyleVersion: 3 as const };
+  assert.equal(validateConsultation(readableV3, validIds), readableV3);
   assert.throws(() => validateConsultation({ ...legacy, readingStyleVersion: 2 }, validIds));
-  for (const readingStyleVersion of [0, 1, 3, "2", null]) assert.throws(() => validateConsultation({ ...readable, readingStyleVersion }, validIds));
+  assert.throws(() => validateConsultation({ ...legacy, readingStyleVersion: 3 }, validIds));
+  for (const readingStyleVersion of [0, 1, 4, "3", null]) assert.throws(() => validateConsultation({ ...readableV3, readingStyleVersion }, validIds));
 });
 
 test("새 상담의 요약과 버전은 로컬·계정 저장에서 보존하고 손상된 요약은 저장하지 않는다", async () => {
   const target = memory();
-  const readable: Consultation = { ...consultation(), readingStyleVersion: 2, chapters: [plainChapter()] };
+  const readable: Consultation = { ...consultation(), readingStyleVersion: 3, chapters: [plainChapter()] };
   const value = saved({ consultation: readable });
   assert.equal(writeSavedSajuResult(value, target), true);
   assert.deepEqual(readSavedSajuResult(target)?.consultation, readable);
