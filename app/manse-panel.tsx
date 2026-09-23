@@ -17,7 +17,7 @@ function Distribution({items,kind,center}:{items:{name:string;count:number;perce
 export default function MansePanel({chart,benefactors}:{chart:SajuChart;benefactors:Benefactor[]}) {
   const model=buildManse(chart);
   return <>
-    <nav className="report-nav" aria-label="결과 바로가기"><a href="#result-title">사주표</a><a href="#manse-elements">오행·십성</a><a href="#deep-analysis-title">균형·도움</a><a href="#life-seasons">인생 그래프</a><a href="#flow-overview">운의 흐름</a><a href="#consultation-start">8장 상담</a></nav>
+    <nav className="report-nav" aria-label="결과 바로가기"><a href="#result-title">사주표</a><a href="#manse-elements">오행·십성</a><a href="#deep-analysis-title">균형·도움</a><a href="#life-graph">인생 그래프</a><a href="#life-seasons">인생 4계절</a><a href="#flow-overview">운의 흐름</a><a href="#consultation-start">8장 상담</a></nav>
     <div className="manse-table-wrap" role="region" aria-label="나의 사주 네 기둥" tabIndex={0}><table className="manse-table"><caption>태어난 시·일·월·년으로 보는 네 기둥</caption><thead><tr><th scope="col">구분</th>{model.pillars.map(p=><th scope="col" className={p.label==="일주"?"my-pillar":""} key={p.label}>{p.label}<small>{({시주:"태어난 시",일주:"태어난 날 · 나",월주:"태어난 달",년주:"태어난 해"})[p.label]}</small></th>)}</tr></thead>
       <tbody>{["천간","천간 십성","지지","지지 십성","지장간","12운성","귀인"].map(row=><tr key={row}><th scope="row">{row}</th>{model.pillars.map(p=><td key={p.label} className={p.label==="일주"?"my-pillar":""}>
         {row==="천간"||row==="지지" ? <div className="manse-character" style={{"--ink":`var(--ink-${row==="천간"?p.stemElement:p.branchElement})`} as CSSProperties}><strong>{row==="천간"?p.korean[0]:p.korean[1]}<span>{row==="천간"?p.stem:p.branch}</span></strong><small>{row==="천간"?p.stemElement:p.branchElement} · {ELEMENT_NAMES[row==="천간"?p.stemElement:p.branchElement]}</small></div>

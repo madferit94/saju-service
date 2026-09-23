@@ -6,6 +6,7 @@ import { calculate, type SajuInput } from "../lib/saju/chart";
 import { calculateDaewoon, type DaewoonTimeline } from "../lib/saju/daewoon";
 import { buildLifeSeasons, seasonForGod } from "../lib/saju/life-seasons";
 import LifeSeasonsPanel from "../app/life-seasons-panel";
+import MansePanel from "../app/manse-panel";
 
 const birth: SajuInput = { date: "2005-12-23", time: "08:37", calendar: "solar", topic: "general" };
 const chart = calculate(birth);
@@ -128,6 +129,36 @@ test("그래프는 실제 현재 지점과 같은 연도를 읽을 수 있게 �
   assert.match(html, /<details(?=[^>]*\bopen="")(?=[^>]*class="life-period [^"]+")[^>]*>/);
   assert.match(html, /가로축은 실제 대운이 시작하는 연도/);
   assert.match(html, /행운·성과·수명 점수는 아닙니다/);
+});
+
+test("인생 그래프와 4계절 풀이가 각각 독립된 목적지와 제목을 가진다", () => {
+  const report = buildLifeSeasons(chart, calculateDaewoon(birth, 0, 2026));
+  const html = renderToStaticMarkup(createElement(LifeSeasonsPanel, { report }));
+  const graphStart = html.indexOf('<section class="life-graph-panel" id="life-graph"');
+  const seasonsStart = html.indexOf('<section class="life-seasons" id="life-seasons"');
+  assert.ok(graphStart >= 0 && seasonsStart > graphStart, "두 영역은 별도 section이어야 한다");
+  assert.equal((html.match(/id="life-graph"/g) ?? []).length, 1);
+  assert.equal((html.match(/id="life-seasons"/g) ?? []).length, 1);
+  const graph = html.slice(graphStart, seasonsStart);
+  const seasons = html.slice(seasonsStart);
+  assert.match(graph, /<h2 id="life-graph-heading">나의 인생 그래프<\/h2>/);
+  assert.match(graph, /<svg[^>]*role="img"/);
+  assert.match(graph, /href="#life-seasons"/);
+  assert.doesNotMatch(graph, /class="season-current|class="life-periods"/);
+  assert.match(seasons, /<h2 id="life-seasons-title">나의 인생 4계절<\/h2>/);
+  assert.match(seasons, /class="season-current/);
+  assert.match(seasons, /class="life-periods"/);
+  assert.doesNotMatch(seasons, /<svg\b|class="life-graph-wrap"/);
+});
+
+test("결과 바로가기에서 인생 그래프와 4계절 풀이로 각각 이동한다", () => {
+  const html = renderToStaticMarkup(createElement(MansePanel, { chart, benefactors: [] }));
+  const nav = html.match(/<nav[^>]*aria-label="결과 바로가기"[^>]*>(.*?)<\/nav>/)?.[1];
+  assert.ok(nav, "결과 바로가기 메뉴가 있어야 한다");
+  assert.match(nav, /<a href="#life-graph">인생 그래프<\/a>/);
+  assert.match(nav, /<a href="#life-seasons">인생 4계절<\/a>/);
+  assert.equal((nav.match(/href="#life-graph"/g) ?? []).length, 1);
+  assert.equal((nav.match(/href="#life-seasons"/g) ?? []).length, 1);
 });
 
 test("대운 시작 전 화면은 없는 계절·현재 점을 만들지 않고 이유를 설명한다", () => {

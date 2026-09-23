@@ -818,7 +818,7 @@ main { width: min(100%, 980px); }
 h1 { line-height: 1.3; font-family: Georgia, "Batang", serif; font-weight: 500; }
 .page-header { padding: 24px 24px 52px; }
 .intro { font-size: 17px; }
-.result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel, .deep-analysis, .consultation-panel, .flow-overview, .life-seasons { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; margin-top: 28px; min-width: 0; }
+.result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel, .deep-analysis, .consultation-panel, .flow-overview, .life-seasons, .life-graph-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; margin-top: 28px; min-width: 0; }
 .result h2.day-pillar { font-family: Georgia, "Batang", serif; }
 h3 small { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 6px; }
 p { word-break: keep-all; overflow-wrap: anywhere; }
@@ -909,7 +909,7 @@ button, a, summary { touch-action: manipulation; }
 .consultation-question { background: #f4f2ed; line-height: 1.8; }
 .fortune-evidence { font-size: 14px; line-height: 1.8; }
 .integrated-reading { margin-top: 32px; }
-.life-seasons h2 { margin: 5px 0 14px; font-family: Georgia, "Batang", serif; font-size: clamp(29px,4vw,38px); font-weight: 500; }
+.life-seasons h2, .life-graph-panel h2 { margin: 5px 0 14px; font-family: Georgia, "Batang", serif; font-size: clamp(29px,4vw,38px); font-weight: 500; }
 .life-seasons-lead { max-width: 680px; line-height: 1.8; color: var(--muted); }
 .season-current { margin: 28px 0 24px; padding: 20px 24px; border: 1px solid var(--border); border-left: 5px solid #647362; border-radius: 12px; background: #f8f6f0; }
 .season-current.season-spring { border-left-color: #4e8074; background: #f0f7f3; }
@@ -927,7 +927,9 @@ button, a, summary { touch-action: manipulation; }
 .life-path { fill: none; stroke: #34473d; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .current-line { stroke: #263d33; stroke-width: 2; stroke-dasharray: 5 4; }
 .current-graph-label { fill: #263d33; font-size: 15px; font-weight: 700; }
-.life-seasons .method-help { margin: 14px 0 24px; line-height: 1.7; }
+.life-graph-panel .method-help { margin: 14px 0 10px; line-height: 1.7; }
+.life-graph-link { margin: 0; }
+.life-graph-link a { display: inline-block; padding: 10px 0; color: var(--primary); font-weight: 700; text-underline-offset: 3px; }
 .season-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 34px; }
 .season-legend span { display: inline-flex; gap: 7px; align-items: center; font-size: 13px; }
 .season-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #4e8074; }
@@ -955,7 +957,7 @@ button, a, summary { touch-action: manipulation; }
   .page-header { padding: 24px 8px 36px; }
   h1 { font-size: 36px; }
   .intro { font-size: 15px; }
-  .result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel, .deep-analysis, .consultation-panel, .flow-overview, .life-seasons { padding: 22px 16px; }
+  .result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel, .deep-analysis, .consultation-panel, .flow-overview, .life-seasons, .life-graph-panel { padding: 22px 16px; }
   .season-current { padding: 16px; }
   .life-period { padding: 0 13px; }
   .distribution-grid { grid-template-columns: 1fr; }
