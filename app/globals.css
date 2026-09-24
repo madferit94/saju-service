@@ -704,6 +704,16 @@ select:focus-visible {
 .fortune-content + .fortune-content { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 16px; }
 .fortune-content > h3 { margin-top: 24px; }
 .fortune-prose { white-space: pre-wrap; line-height: 1.9; }
+.lifetime-guide { margin: 20px 0 24px; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: #f3f5f1; }
+.lifetime-guide h4, .lifetime-order-title, .lifetime-long-reading h4 { margin: 0 0 10px; font-size: 19px; }
+.lifetime-guide p { margin: 8px 0; }
+.lifetime-glossary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 18px 0 0; }
+.lifetime-glossary > div { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.lifetime-glossary dt { font-weight: 700; color: var(--primary); }
+.lifetime-glossary dd { margin: 2px 0 0; font-size: 14px; }
+.lifetime-basis { margin: 12px 0; padding: 12px 14px; border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; background: #f3f5f1; }
+.lifetime-basis p { margin: 4px 0 0; }
+.lifetime-long-reading { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--border); }
 .lifetime-grid, .month-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
 .lifetime-card, .month-card { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
 .lifetime-card h4 { margin: 4px 0 18px; font-size: 19px; }
@@ -730,6 +740,7 @@ select:focus-visible {
 .fortune-panel p, .fortune-panel li { overflow-wrap: anywhere; }
 
 @media (max-width: 520px) {
+  .lifetime-glossary { grid-template-columns: 1fr; }
   .lifetime-grid, .month-grid { grid-template-columns: 1fr; }
   .fortune-synthesis { padding: 18px; }
   .fortune-section-nav { gap: 6px; }

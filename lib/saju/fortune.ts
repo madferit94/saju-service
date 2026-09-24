@@ -158,7 +158,7 @@ export function buildFortuneReport(chart: SajuChart, timeline: DaewoonTimeline, 
         ...flow, index: p.index, ganji: p.ganji, korean: p.korean,
         startAge, endAge, startYear: p.startYear + startAge - p.startAge, endYear: p.endYear - (p.endAge - endAge),
         summary: !flow ? "대운 시작 전입니다. 타고난 네 기둥과 양육·배움 환경을 중심으로 읽는 구간입니다." :
-          stage.max <= 19 ? flow.evidence[0] + ". 이 시기에는 이를 실제 직업이나 재산으로 해석하지 않고, 배움의 방식·또래 관계·가정에서 맡은 역할과 비교합니다." :
+          stage.max <= 19 ? "이 시기에는 대운의 관계를 실제 직업이나 재산으로 해석하지 않고, 배움의 방식·또래 관계·가정에서 맡은 역할과 비교합니다." :
           flow.opportunity + " " + flow.action,
       };
     });
@@ -168,7 +168,7 @@ export function buildFortuneReport(chart: SajuChart, timeline: DaewoonTimeline, 
   const natalMonthGod = natalHidden[1].stems[0].god;
   return {
     version: 2 as const, year,
-    natal: { hiddenStems: natalHidden, contacts: natalContacts, monthGod: natalMonthGod },
+    natal: { dayMaster: chart.dayMaster, hiddenStems: natalHidden, contacts: natalContacts, monthGod: natalMonthGod },
     annual, months, lifetime,
     synthesis: "타고난 월지 " + chart.pillars[1].branch + "(" + chart.pillars[1].korean[1] + ")의 주된 지장간은 " + natalMonthGod +
       "(" + meanings[natalMonthGod].meaning + ")으로 읽습니다. " + year + "년에는 " + annual.ganji + "(" + annual.korean + ")의 " +

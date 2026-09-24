@@ -34,3 +34,5 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [ ] 018-saju-prompt-redesign.md — 프롬프트 코드·테스트 통과, 가상 Gemini 실응답의 상투 문장 보완 필요
 
 - [x] 019-reading-without-questions.md — 결과의 회고 질문 칸 제거와 생활 운의 근거 해석 추가 (자동 검증, 참가자 화면 확인 전)
+
+- [x] 020-lifetime-explanation-first.md — 평생운의 용어·계산 근거를 해석보다 먼저 표시 (자동 검증, 참가자 화면 확인 전)
