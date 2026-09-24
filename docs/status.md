@@ -30,3 +30,5 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] 016-continuous-reading.md — 운 항목 현황 점검과 연속 읽기 (자동 Gemini 상담 화면은 Spec 017에서 제거)
 
 - [x] 017-life-domain-fortunes.md — 건강·연애·배우자·자녀 등 생활 주제별 운 풀이 확장 (가상 자료 검증, 참가자 화면 확인 전)
+
+- [x] 018-saju-prompt-redesign.md — 공개 설계 자료를 바탕으로 종합·상담 기본 프롬프트 재설계 (가상 자료 검증, 실제 Gemini 문체 확인 전)

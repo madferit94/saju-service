@@ -3,6 +3,7 @@ import type { SajuChart } from "./chart";
 import type { DaewoonTimeline } from "./daewoon";
 import { buildFortuneReport, koreanGanji, type FortuneReport } from "./fortune";
 import { analyzeNatal, type DeepAnalysis } from "./deep-analysis";
+import { SAJU_READING_FOUNDATION } from "./reading-prompt";
 
 export type PeriodReading = {
   index: number;
@@ -199,11 +200,11 @@ export const geminiReadingResponseSchema = {
 
 export function createGeminiReadingPrompt(context: GeminiReadingContext): string {
   return [
+    SAJU_READING_FOUNDATION,
     "층위 구분을 엄수하세요. monthly에서 ganji는 월운, daewoonGanji는 대운, annualGanji는 세운입니다. 예를 들어 기축이 월운이면 '기축 대운'이라고 쓰면 계산 오류입니다. 각 monthly 필드 안에서는 이 세 가지 제공값 이외의 대운·세운·월운 간지를 언급하지 마세요. 간지와 한글 독음이 서로 정확히 맞아야 합니다.",
     "lifetime은 반드시 '초년', '청년', '중년', '후반' 4개 소제목을 모두 포함하고 각 단락에 실제 연도 구간과 변화 이유를 쓰세요. fortune.lifetime.periods의 잘린 연령 구간을 그대로 따르며 한 대운 전체를 다른 생애 구간으로 옮기지 마세요. 대운 간지에는 한글 독음을 병기하세요.",
     "필수 대운 index 목록: " + JSON.stringify(context.timeline.periods.map((p) => p.index)) + ". periodReadings의 길이는 반드시 " + context.timeline.periods.length + "개입니다. index 0이 목록에 있으면 간지가 비어 있어도 '대운 시작 전'의 양육·생활 환경 해석을 반드시 작성하세요. 빈 간지를 임의로 만들거나 이 항목을 생략하지 마세요.",
-    "당신은 명리학 해석을 제공하는 AI입니다. 30년간 상담한 역술가의 분석 밀도와 솔직함을 지향하되 실제 인간 경력을 사칭하지 마세요. 이용자에게 직접 설명하는 차분하고 명료한 한국어를 쓰세요.",
-    "이용자가 원하는 것은 원론이나 위로가 아니라 자기 사주를 판단 자료로 읽는 일입니다. 매 문단은 제공된 정확한 간지·십성·지장간·합충 중 최소 두 근거를 연결하고, 그 근거가 함께 만드는 장점과 부담, 실제로 확인할 상황과 행동으로 이어져야 합니다. 다른 사주에도 그대로 적용될 문장만 있으면 다시 쓰세요.",
+    "각 필드는 계산된 정확한 간지·십성·지장간·합충 중 최소 두 근거를 연결하고 그 근거가 함께 만드는 장점과 부담, 실제 확인할 조건과 행동으로 이어지게 하세요.",
     "십성은 첫 등장에 뜻을 풀어 쓰세요. 한자는 반드시 한글 독음을 병기하세요. 예: 丙午(병오), 정관(규칙·평가·책임). 지장간은 지지 안에 들어 있는 천간이라는 뜻을 설명하세요. 합을 무조건 호재, 충을 사고·이별로 단정하지 마세요. analysis는 서비스 비교 규칙으로 계산한 강약 경향, 월령 격국 후보, 억부 용신 후보와 간이 조후 관점입니다. 이를 원국과 운에 연결하세요. label이 보류·경계이면 강약을 확정하지 말고 useful.status가 판정 보류이면 용신을 지어내지 마세요. 격국 후보를 성격/파격 확정으로 바꾸지 마세요. 점수는 정확도나 확률이 아닙니다. 합화와 특수격은 확정하지 않습니다. 신강신약·격국·용신을 포함하지 않았다는 과거 안내를 쓰지 마세요.",
     "synthesis: 원국의 월지·일간·십성과 해당 대운, 선택 연도의 세운을 엮어 이 사람에게 가장 큰 쟁점 2개를 쓰세요. 상반된 작용이 있으면 어느 상황에서 장점/부담으로 드러날지 조건을 구분하세요. fortune.synthesis를 참고하되 그대로 복사하지 말고 근거를 발전시키세요.",
     "lifetime: fortune.lifetime의 실제 대운 기간과 연령을 인용해 초년·청년·중년·후반의 흐름을 비교하세요. 나이에 대한 일반론 대신 어떤 십성이나 원국과의 합충이 달라지는지 설명하고, 시기 사이에 이어갈 강점과 바꿀 방식을 짚으세요. 최소 세 시기를 다루고 수명·사망 시점은 말하지 마세요.",

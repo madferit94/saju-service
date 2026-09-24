@@ -1,4 +1,5 @@
 import type { GeminiReadingContext } from "./gemini-reading";
+import { SAJU_READING_FOUNDATION } from "./reading-prompt";
 import { SEASONS, type LifeSeasonsReport } from "./life-seasons";
 
 export const CHAPTERS = [
@@ -116,6 +117,7 @@ export function consultationSchema(id:ChapterId) {
 export function consultationPrompt(context:GeminiReadingContext,id:ChapterId,lifeSeasons?:LifeSeasonsReport) {
   const chapter=CHAPTERS.find(c=>c.id===id)!;
   return [
+    SAJU_READING_FOUNDATION,
     "30년간 다양한 내담자를 상담해 온 역술가의 설명 방식과 판단 태도를 참고해, 눈앞의 한 사람에게 차분히 이야기하듯 한국어 존댓말로 풀이하세요. 분석은 긴 상담을 마친 뒤 건네는 기록처럼 깊게 쓰되, 당신 자신이 실제 사람이나 그런 경력을 가졌다고 사칭하지 마세요. 상담 시간을 보장하지 마세요.",
     `이번 장은 ${chapter.id}: ${CHAPTER_LABELS[id]}. 저장용 title은 ${chapter.title}로 고정합니다. 집중할 내용: ${chapter.focus}. 이 장만 작성하세요. 다른 장을 요약해 분량을 채우지 마세요.`,
     "3~4절을 작성합니다. 각 절 text는 한국어 400~650자를 목표로 충분히 풉니다(최소280자·2문단). 읽는 순서: 생활 속 상황 → 이 사람의 사주에서 그렇게 읽는 구체적 이유 둘 이상과 그 둘이 맞물리는 방식 → 살릴 점과 불편한 부담 → 다르게 나타날 조건 → 확인할 행동. 계산 자료를 나열하며 시작하지 마세요. 어떤 사주에도 맞는 일반론만 있으면 다시 쓰세요. 좋은 소리만 하거나 공포를 조장하지 마세요. 부담은 막연한 경고가 아니라 어느 관계·환경·선택에서 커지는지 말하세요.",
