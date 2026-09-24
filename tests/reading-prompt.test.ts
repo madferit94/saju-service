@@ -49,6 +49,11 @@ test("공유 기본 프롬프트는 CO-STAR 여섯 항목과 개인별 해석 �
     "설명 방식만 보여",
     "그대로",
     "실제 인간 경력을 사칭하지",
+    "예시 A:",
+    "예시 B:",
+    "공동 지출의 범위와 정산 시점",
+    "한 달에 한 번 완성물을 비교",
+    "각 필드마다 같은 생활 장면과 조언을 반복하지 마세요",
   ]) {
     assert.ok(SAJU_READING_FOUNDATION.includes(phrase), `공유 기준에 '${phrase}' 원칙이 있어야 함`);
   }
@@ -70,6 +75,11 @@ test("종합 해석과 장별 상담은 같은 기본 기준을 포함하고 출
     "실제 인간 경력을 사칭하지",
     "예시는 설명 방식만 보여 줍니다",
     "그대로 복사하지",
+    "예시 A:",
+    "예시 B:",
+    "공동 지출의 범위와 정산 시점",
+    "한 달에 한 번 완성물을 비교",
+    "각 필드마다 같은 생활 장면과 조언을 반복하지 마세요",
   ];
 
   for (const prompt of outputPrompts) {
@@ -87,5 +97,15 @@ test("종합 해석과 장별 상담은 같은 기본 기준을 포함하고 출
     ]) {
       assert.ok(!prompt.includes(privateValue), `생성 프롬프트에 가상 입력 '${privateValue}'를 포함하면 안 됨`);
     }
+  }
+
+  const [overallPrompt] = outputPrompts;
+  for (const firstSentenceRule of [
+    "synthesis: 첫 문장은 한자·십성·일간·월지 없이",
+    "lifetime: 첫 문장은 전문용어 없이",
+    "annual: 첫 문장은 한자·명리 용어 없이",
+    "overview는 전문용어 없는 생활 문장으로 시작한 뒤",
+  ]) {
+    assert.ok(overallPrompt.includes(firstSentenceRule), `종합 해석 지시에 '${firstSentenceRule}' 규칙이 있어야 함`);
   }
 });
