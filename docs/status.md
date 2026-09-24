@@ -32,3 +32,5 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] 017-life-domain-fortunes.md — 건강·연애·배우자·자녀 등 생활 주제별 운 풀이 확장 (가상 자료 검증, 참가자 화면 확인 전)
 
 - [ ] 018-saju-prompt-redesign.md — 프롬프트 코드·테스트 통과, 가상 Gemini 실응답의 상투 문장 보완 필요
+
+- [x] 019-reading-without-questions.md — 결과의 회고 질문 칸 제거와 생활 운의 근거 해석 추가 (자동 검증, 참가자 화면 확인 전)

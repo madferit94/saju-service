@@ -48,7 +48,7 @@ export async function POST(request:Request) {
           "직전 응답 검증 오류: "+(caught instanceof Error ? caught.message : "형식 오류"),
           "요약 summary: 30~180자. 한자, 일간·월지·투간·본기·지장간·격국·용신·신강·신약·십성·재성·관성·식상·생조·조후·억부라는 말을 쓰지 마세요. '살펴봅니다/다룹니다/비교합니다/확인합니다'로 내용 소개를 하지 말고 이 사람에게 읽히는 생활 특징과 조건을 직접 말하세요.",
           "절 3~4개. 각 text는 400~650자(최소280자), 줄바꿈으로 분리한 2개 이상 문단. 각 절 첫 문장을 생활 언어로 완전히 새로 쓰세요. 예: '주변의 기대와 내 선택이 부딪힐 때, 무엇을 먼저 지킬지 고민하게 됩니다.' 첫 문장에는 한자·대운 간지·일간·월지·격국·용신·십성 이름을 절대 넣지 마세요. 현재 계절과 계산 근거는 두 번째 문단에서 설명하세요. 설명을 줄이거나 일반론으로 바꾸지 말고 개인별 근거를 유지하세요. 장 요약과 모든 문장에서 체력·번아웃·무기력·탈진·불면·질환·에너지라는 단어는 쓰지 마세요. 건강·성격·미래 사건을 확정하지 마세요.",
-          "각 절 counterpoint 최소25자: 다르게 읽히는 조건. example 최소25자: 실제 일이라 단정하지 않는 구체적인 가정 장면. question 최소10자: 경험 확인 질문. action 최소20자: 그 답에 따라 달라지는 실천. evidenceIds는 실제 목록에서 서로 다른 2~6개. 한자는 한글 독음 병기. JSON만 출력.",
+          "각 절 counterpoint 최소25자: 다르게 읽히는 조건. example 최소25자: 실제 일이라 단정하지 않는 구체적인 가정 장면. 호환용 question 최소10자: 물음표 없는 평서문으로 현실에서 대조할 관찰 기준. action 최소20자: 그 조건에 따른 실천. evidenceIds는 실제 목록에서 서로 다른 2~6개. 한자는 한글 독음 병기. JSON만 출력.",
           ...(chapterId==="lifetime"?["기존 초안에서 대운의 계절·현재 위치·시기 변화를 설명했다면 앞서 제공된 원래 계산 자료와 일치하는 내용만 유지하세요. 새 계절이나 연도를 추정하지 마세요."]:[]),
           "계산으로 확인된 근거:\n"+JSON.stringify(consultationFacts(context)),
           ...(lifeSeasons?["대운 4계절의 원래 계산 자료:\n"+JSON.stringify({current:lifeSeasons.current,periods:lifeSeasons.periods.map(p=>({startYear:p.startYear,endYear:p.endYear,season:p.seasonLabel,secondarySeason:p.secondarySeason}))})]:[]),

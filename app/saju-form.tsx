@@ -483,7 +483,6 @@ export default function SajuForm() {
                                 <p><strong>살릴 점</strong> {localInterpretation.strengths}</p>
                                 <p><strong>주의할 점</strong> {localInterpretation.cautions}</p>
                                 <p><strong>현실적인 조언</strong> {localInterpretation.advice}</p>
-                                <p className="period-reflection"><strong>경험을 돌아볼 질문</strong> {localInterpretation.reflection}</p>
                               </div>
                             </details>
                           )}
@@ -494,7 +493,6 @@ export default function SajuForm() {
                               <p><strong>살릴 점</strong> {interpretation.strengths}</p>
                               <p><strong>주의할 점</strong> {interpretation.cautions}</p>
                               <p><strong>현실적인 조언</strong> {interpretation.advice}</p>
-                              <p className="period-reflection"><strong>경험을 돌아볼 질문</strong> {interpretation.reflection}</p>
                             </div>
                           )}
                         </li>

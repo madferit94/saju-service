@@ -10,7 +10,7 @@ export default function ConsultationPanel({consultation,facts}:{consultation:Con
       {chapter.summary && <div className="chapter-summary"><strong>이 장에서 기억할 이야기</strong><p>{chapter.summary}</p></div>}
       {chapter.sections.map((section,j)=><article key={j}><p className="section-number">이야기 {j+1}</p><h4>{section.heading}</h4><div className="consultation-prose">{section.text.split(/\n+/).filter(Boolean).map((paragraph,i)=><p key={i}>{paragraph}</p>)}</div>
         <div className="consultation-example"><strong>생활에서는 이렇게 볼 수 있어요</strong><p>{section.example}</p></div>
-        <div className="consultation-question"><p><strong>지금 해볼 일</strong>{section.action}</p><p><strong>내 경험에 비춰보기</strong>{section.question}</p></div>
+        <p className="consultation-action"><strong>지금 해볼 일</strong>{section.action}</p>
         <details className="fortune-evidence"><summary>왜 이렇게 읽었나요? · 사주 근거와 다른 가능성</summary><p><strong>이런 경우에는 다르게 볼 수 있어요</strong></p><p>{section.counterpoint}</p><ul>{section.evidenceIds.map(id=><li key={id}>{facts.find(f=>f.id===id)?.text ?? "이전 계산 근거입니다. 최신 결과에서 다시 확인해 주세요."}</li>)}</ul></details>
       </article>)}
     </section>)}

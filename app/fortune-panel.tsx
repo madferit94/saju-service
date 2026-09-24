@@ -63,14 +63,14 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
     </section>
     <section className="fortune-content" id="fortune-domains" aria-labelledby="fortune-domains-title">
       <h3 id="fortune-domains-title">생활 주제별 운</h3>
-      <p className="method-help">각 주제는 원국의 자리와 십성, {report.year}년 세운을 함께 읽었습니다. 실제 경험과 맞지 않는 부분은 질문을 통해 확인해 보세요.</p>
+      <p className="method-help">각 주제는 원국의 자리와 십성, {report.year}년 세운을 함께 읽었습니다. 풀이에 사용한 계산값은 카드 아래에서 확인할 수 있습니다.</p>
       <nav className="fortune-domain-nav" aria-label="생활 운 항목 바로가기">{report.domains.map((domain) => <a key={domain.id} href={`#fortune-domain-${domain.id}`}>{domain.title}</a>)}</nav>
       <div className="reading-grid fortune-domain-grid">{report.domains.map((domain) => {
         const extra = domain.id === "career" ? reading?.career : domain.id === "money" ? reading?.money : domain.id === "partner" ? reading?.relationships : null;
         return <article className="reading-card fortune-domain-card" id={`fortune-domain-${domain.id}`} key={domain.id}>
           <h4>{domain.title}</h4><p>{domain.body}</p>
           {extra && <p className="domain-extra"><strong>기존 종합 해석</strong><br />{extra}</p>}
-          <p className="domain-question"><strong>내 경험에 비춰보기</strong><br />{domain.question}</p>
+          <p className="domain-interpretation"><strong>사주에서 읽히는 점</strong> {domain.interpretation}</p>
           <details className="fortune-evidence"><summary>이렇게 읽은 사주 근거</summary><ul>{domain.evidence.map((line, index) => <li key={index}>{line}</li>)}</ul></details>
         </article>;
       })}</div>
