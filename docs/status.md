@@ -53,6 +53,6 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 
 - [x] 028-life-period-notes.md — 인생 그래프 시기별 경험 한 줄 메모 (로컬 검증, 참가자 확인 전)
 
-- [ ] 029-evidence-disclosure-cleanup.md — 근거 접기 창 정리와 프롬프트 대안 조사
+- [x] 029-evidence-disclosure-cleanup.md — 근거 접기 창 정리와 프롬프트 대안 조사 (자동·Vercel 미리보기 검증)
 
 - [x] 030-default-korea-country.md — 출생 국가는 대한민국 기본값, 다른 나라 선택 가능 (로컬 검증, 참가자 확인 전)
