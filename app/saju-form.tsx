@@ -24,6 +24,7 @@ import LifeSeasonsPanel from "./life-seasons-panel";
 import { buildLifeSeasons } from "../lib/saju/life-seasons";
 import LifeGraphPanel from "./life-graph-panel";
 import { buildLifeGraph } from "../lib/saju/life-graph";
+import { lifeNoteStorageKey } from "../lib/saju/life-notes";
 import { buildLocalReading } from "../lib/saju/reading";
 import { clearSavedSajuResult, readSavedSajuResult, writeSavedSajuResult } from "../lib/saju/persistence";
 import type { Birthplace } from "../lib/saju/birth-moment";
@@ -439,7 +440,7 @@ export default function SajuForm() {
           </section>
         )}
         {chart && timeline && <DailyFortunePanel chart={chart} timeline={timeline} />}
-        {lifeGraph && <LifeGraphPanel report={lifeGraph} />}
+        {lifeGraph && pendingInput && yunGender !== null && <LifeGraphPanel key={lifeNoteStorageKey(pendingInput, yunGender)} report={lifeGraph} noteStorageKey={lifeNoteStorageKey(pendingInput, yunGender)} />}
         {lifeSeasons && <LifeSeasonsPanel report={lifeSeasons} />}
         {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
         {chart && timeline && fortune && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={setFortuneYear} disabled={isGenerating} />}

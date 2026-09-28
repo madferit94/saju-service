@@ -48,3 +48,7 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] 025-reading-focus-and-clarity.md — 해석의 읽기 순서·근거 연결·문장 품질 개선
 
 - [x] 026-life-peak-graph.md — 단순한 인생 흐름과 전성기 후보 표시 (자동 검증, 화면 확인 전)
+
+- [x] 027-night-sky-readability.md — 밤하늘과 별똥별 화면, 본문 가독성 개선 (로컬 검증, 참가자 확인 전)
+
+- [x] 028-life-period-notes.md — 인생 그래프 시기별 경험 한 줄 메모 (로컬 검증, 참가자 확인 전)

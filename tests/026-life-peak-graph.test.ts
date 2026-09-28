@@ -18,7 +18,7 @@ const branchPrimary: Record<string, string> = {
   午: "丁", 未: "己", 申: "庚", 酉: "辛", 戌: "戊", 亥: "壬",
 };
 const render = (report: ReturnType<typeof buildLifeGraph>) =>
-  renderToStaticMarkup(createElement(LifeGraphPanel, { report }));
+  renderToStaticMarkup(createElement(LifeGraphPanel, { report, noteStorageKey: "test-life-notes" }));
 
 test("조건부 도움 오행이 있는 원국은 대운 두 글자와 일치한 0~2개로 전성기 후보를 고른다", () => {
   for (const date of ["2005-12-23", "1994-12-01", "2001-08-19"]) {
@@ -90,7 +90,7 @@ test("기본 화면은 선 하나와 강조 구간 두 개 이하만 제시하�
   assert.match(html, /외 \d+구간/);
   assert.match(html, /<details class="fortune-evidence life-graph-details"><summary>시기별 해석 근거 보기<\/summary>/);
   assert.match(html, /<details class="fortune-evidence"><summary>그래프 계산 기준과 한계<\/summary>/);
-  assert.equal((html.match(/<article /g) ?? []).length, graph.periods.length);
+  assert.equal((html.match(/<article /g) ?? []).length, graph.periods.length * 2, "시기별 메모와 해석 근거가 각각 한 번씩 표시되어야 합니다");
   assert.match(html, /role="region"[^>]*tabindex="0"/i);
   assert.match(html, /<svg[^>]*role="img"[^>]*aria-labelledby=/);
   assert.match(html, /<title id="life-graph-title">/);

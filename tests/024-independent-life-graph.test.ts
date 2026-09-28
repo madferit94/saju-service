@@ -23,7 +23,7 @@ test("인생 그래프는 실제 대운 순서와 연도를 사용하고 계절 
     seasons.periods.map((period) => [period.startYear, period.endYear]));
   assert.doesNotMatch(graph.method, /봄|여름|가을|겨울/);
 
-  const graphHtml = renderToStaticMarkup(createElement(LifeGraphPanel, { report: graph }));
+  const graphHtml = renderToStaticMarkup(createElement(LifeGraphPanel, { report: graph, noteStorageKey: "test-life-notes" }));
   const seasonHtml = renderToStaticMarkup(createElement(LifeSeasonsPanel, { report: seasons }));
   assert.match(graphHtml, /id="life-graph"/);
   assert.doesNotMatch(graphHtml, /id="life-seasons"|season-current|봄 ·|여름 ·|가을 ·|겨울 ·/);

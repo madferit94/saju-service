@@ -1035,3 +1035,174 @@ button, a, summary { touch-action: manipulation; }
   .consultation-chapter > h3 { font-size: 19px; }
   .consultation-prose { font-size: 16px; }
 }
+
+/* 밤하늘은 장식 층에만 두고, 읽는 영역은 불투명한 종이 톤으로 유지한다. */
+:root {
+  --background: #091329;
+  --surface: #fffefd;
+  --text: #1a2741;
+  --muted: #485771;
+  --border: #cdd5e3;
+  --focus: #d89332;
+  --primary: #304b87;
+  --soft: #edf2fa;
+}
+
+body {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  padding-top: 36px;
+  background:
+    radial-gradient(ellipse at 78% 4%, #30437e 0, transparent 36%),
+    radial-gradient(ellipse at 14% 19%, #22345b 0, transparent 35%),
+    linear-gradient(180deg, #071127 0%, #101d3b 46%, #091329 100%);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, #ffffff 1px, transparent 1.5px),
+    radial-gradient(circle, #cbdcff 1px, transparent 1.5px),
+    radial-gradient(circle, #f8e5bd 1.3px, transparent 2px);
+  background-size: 117px 137px, 179px 211px, 313px 279px;
+  background-position: 17px 22px, 84px 67px, 53px 115px;
+  opacity: .55;
+}
+
+main { position: relative; }
+.page-header {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+  padding: 72px 24px 68px;
+  color: #f9f8f5;
+}
+.page-header::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 12%;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fffdf1, #d5ddf3 60%, #9caed7);
+  box-shadow: 0 0 55px 15px #cad8ff55, 0 0 120px 30px #acbdff33;
+  opacity: .86;
+  pointer-events: none;
+}
+.page-header::after {
+  content: "";
+  position: absolute;
+  top: 34%;
+  left: -24%;
+  width: 170px;
+  height: 2px;
+  transform: rotate(-26deg);
+  transform-origin: center;
+  background: linear-gradient(90deg, transparent, #d5e6ff99 55%, #fff);
+  box-shadow: 0 0 10px 2px #b4d4ff88;
+  animation: shooting-star 11s linear infinite;
+  pointer-events: none;
+}
+@keyframes shooting-star {
+  0%, 73% { translate: 0 0; opacity: 0; }
+  75% { opacity: 1; }
+  82% { translate: 1000px 220px; opacity: 0; }
+  100% { translate: 1000px 220px; opacity: 0; }
+}
+.page-header > * { position: relative; z-index: 1; }
+.page-header .eyebrow { color: #f5d79c; font-size: 15px; letter-spacing: .18em; }
+.page-header h1 { font-size: clamp(38px, 6vw, 62px); font-weight: 700; text-shadow: 0 3px 25px #060d23; }
+.page-header .intro { color: #e4eaf7; font-size: clamp(16px, 2vw, 19px); line-height: 1.85; }
+
+.input-card, .account-panel,
+.result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel,
+.deep-analysis, .consultation-panel, .flow-overview, .life-seasons, .life-graph-panel {
+  background: var(--surface);
+  border: 1px solid #d9e0ec;
+  box-shadow: 0 20px 55px #030b1d38;
+}
+.input-card { border-radius: 22px; padding: 36px; }
+.account-panel { background: #f7f9fe; border-color: #d9e0ec; }
+.account-panel .secondary-button { color: var(--primary); border-color: var(--border); }
+.account-message { background: #e6edf9; }
+.saved-reading-list span { color: var(--muted); }
+.radio-options label:has(input:checked) { background: #e7efff; }
+.result-label { color: var(--primary); font-weight: 800; letter-spacing: .06em; }
+.report-nav a { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; }
+.report-nav a:hover, .report-nav a:focus-visible { background: #dbe6fa; }
+.fortune-evidence { background: #f1f5fc; font-size: 15px; }
+.manse-table thead, .deep-analysis-grid > article, .consultation-toc a,
+.consultation-aside, .consultation-action, .chapter-summary, .current-reading-guide {
+  background: #f4f7fd;
+}
+.manse-table .my-pillar, .cycle-card[aria-pressed="true"] { background: #fff2d9; }
+.life-graph-highlight, .life-graph-periods article.graph-current-period {
+  border-color: #a8bce4;
+  background: #edf3ff;
+}
+.life-graph-wrap, .life-graph-periods article, .life-period { background: #f8faff; }
+.life-period[open] { border-color: #9db2da; }
+.graph-guide { stroke: #bcc8dc; }
+.life-path.graph-flow, .current-line { stroke: #4967a6; }
+.graph-flow-point { fill: #4967a6; }
+.graph-peak-point { fill: #ad6c1e; }
+.life-year-label, .current-graph-label { fill: #34496d; }
+.current-badge { background: #dce8fb; color: #213b72; }
+.season-current, .current-reading-guide { border-color: #d6dfef; }
+.season-current.season-spring { background: #edf7f4; }
+.season-current.season-summer { background: #fff2ed; }
+.season-current.season-autumn { background: #fff8e7; }
+.season-current.season-winter { background: #edf3ff; }
+
+input, select { color: var(--text); }
+input::placeholder, textarea::placeholder { color: #65728b; opacity: 1; }
+button:disabled { cursor: not-allowed; opacity: .58; }
+button:hover:not(:disabled) { opacity: .9; }
+a { text-underline-offset: 3px; }
+summary { font-size: 16px; }
+
+.life-note-disclosure { margin: 22px 0 16px; border: 1px solid var(--border); border-radius: 14px; padding: 0 18px; background: #f7f9fe; }
+.life-note-disclosure > summary { font-size: 17px; font-weight: 700; color: var(--primary); }
+.life-note-disclosure > .method-help { margin: 2px 0 14px; font-size: 15px; }
+.life-note-status:not(:empty) { padding: 10px 12px; border-radius: 8px; background: #e8effb; color: var(--text); }
+.life-note-list { display: grid; gap: 12px; padding: 0 0 20px; }
+.life-note-list article { padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.life-note-list article.life-note-current { border-color: #9ab2df; background: #f1f5ff; }
+.life-note-list h3 { margin: 0 0 4px; font-size: 17px; line-height: 1.5; }
+.life-note-list h3 .current-badge { margin-left: 8px; }
+.life-note-list p { margin: 0 0 12px; color: var(--muted); }
+.life-note-list label { display: block; margin: 0 0 6px; }
+.life-note-row { display: flex; align-items: center; gap: 8px; }
+.life-note-row input { flex: 1; min-width: 0; }
+.life-note-row button { flex: 0 0 auto; margin: 0; min-height: 48px; padding: 9px 16px; }
+.life-note-row .life-note-delete { color: var(--primary); background: white; border-color: var(--border); }
+
+@media (max-width: 600px) {
+  body { padding: 12px 12px 28px; }
+  .page-header { padding: 70px 14px 42px; margin-bottom: 12px; }
+  .page-header::before { width: 112px; height: 112px; right: 0; opacity: .52; }
+  .page-header h1 { font-size: clamp(33px, 9vw, 44px); }
+  .page-header .intro { font-size: 16px; }
+  .input-card { padding: 24px 18px; }
+  .report-nav a { font-size: 14px; }
+  .manse-table th, .manse-table td { font-size: 14px; }
+  .manse-table thead small, .manse-table th:first-child,
+  .manse-character small, .hidden-stem, .manse-stars { font-size: 12px; }
+  .daily-calendar td span, .daily-calendar td small { font-size: 12px; }
+  .cycle-card > small, .distribution-list dt small, .distribution-list dd small { font-size: 12px; }
+  .life-note-disclosure { padding: 0 12px; }
+  .life-note-list article { padding: 14px; }
+  .life-note-row { flex-wrap: wrap; }
+  .life-note-row input { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-header::after { animation: none; opacity: 0; }
+}
