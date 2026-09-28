@@ -363,9 +363,10 @@ export default function SajuForm() {
           setCityLoading(false);
           setBirthplace(null);
         }} required>
-          {countries.length === 0 && <option value="KR">국가 목록 불러오는 중…</option>}
-          {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
+          <option value="KR">대한민국</option>
+          {countries.filter((country) => country.code !== "KR").map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
         </select>
+        <p className="method-help">대한민국이 기본으로 선택되어 있습니다. 다른 나라에서 태어났다면 목록에서 바꿔 주세요.</p>
 
         <label htmlFor="city">태어난 도시</label>
         <input id="city" type="search" value={cityQuery} autoComplete="off" placeholder="도시 이름을 입력하고 목록에서 선택" onChange={(event) => {
