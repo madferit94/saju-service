@@ -19,6 +19,7 @@ import type { Consultation } from "../lib/saju/consultation";
 import DeepAnalysisPanel from "./deep-analysis-panel";
 import MansePanel from "./manse-panel";
 import FlowOverview from "./flow-overview";
+import DailyFortunePanel from "./daily-fortune-panel";
 import LifeSeasonsPanel from "./life-seasons-panel";
 import { buildLifeSeasons } from "../lib/saju/life-seasons";
 import { buildLocalReading } from "../lib/saju/reading";
@@ -434,6 +435,7 @@ export default function SajuForm() {
             <MansePanel chart={chart} benefactors={benefactors} />
           </section>
         )}
+        {chart && timeline && <DailyFortunePanel chart={chart} timeline={timeline} />}
         {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
         {lifeSeasons && <LifeSeasonsPanel report={lifeSeasons} />}
         {chart && timeline && fortune && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={setFortuneYear} disabled={isGenerating} />}

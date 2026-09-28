@@ -907,6 +907,15 @@ button, a, summary { touch-action: manipulation; }
 .daily-calendar td small { font-size: 12px; color: var(--muted); }
 .daily-calendar th:first-child, .daily-calendar td:first-child b { color: var(--ink-화); }
 .daily-calendar th:last-child, .daily-calendar td:last-child b { color: var(--ink-수); }
+.daily-fortune { margin-top: 24px; }
+.daily-fortune h2 { margin-bottom: 12px; }
+.daily-fortune-date { font-size: 18px; }
+.daily-fortune-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
+.daily-fortune-grid article { border: 1px solid var(--border); border-radius: 12px; padding: 18px; background: var(--soft); }
+.daily-fortune-grid h3 { margin: 0 0 10px; font-size: 17px; }
+.daily-fortune-grid p { margin: 0; line-height: 1.7; }
+.daily-fortune details { margin: 12px 0; }
+@media (max-width: 640px) { .daily-fortune-grid { grid-template-columns: 1fr; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .deep-analysis-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
 .deep-analysis-grid > article { padding: 24px; background: #faf8f4; border: 1px solid var(--border); border-radius: 12px; }

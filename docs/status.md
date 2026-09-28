@@ -36,3 +36,5 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] 019-reading-without-questions.md — 결과의 회고 질문 칸 제거와 생활 운의 근거 해석 추가 (자동 검증, 참가자 화면 확인 전)
 
 - [x] 020-lifetime-explanation-first.md — 평생운의 용어·계산 근거를 해석보다 먼저 표시 (자동 검증, 참가자 화면 확인 전)
+
+- [ ] 021-daily-fortune-cron.md — 한국 시간 오전 9시 오늘의 운세와 Vercel 예약 작업
