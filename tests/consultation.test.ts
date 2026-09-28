@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ConsultationPanel from "../app/consultation-panel";
 import { calculate, type SajuInput } from "../lib/saju/chart";
 import { calculateDaewoon } from "../lib/saju/daewoon";
 import { calculateBenefactors } from "../lib/saju/benefactors";
@@ -44,6 +47,19 @@ function memory(): Storage {
   const items = new Map<string, string>();
   return { getItem: key => items.get(key) ?? null, setItem: (key, value) => { items.set(key, value); }, removeItem: key => { items.delete(key); } } as Storage;
 }
+
+test("기존 저장 상담의 질문 필드는 보존하되 결과 화면에 질문 칸은 표시하지 않는다", () => {
+  const target = memory();
+  const original = saved({ consultation: consultation([chapter()]) });
+  assert.equal(writeSavedSajuResult(original, target), true);
+  const restored = readSavedSajuResult(target)?.consultation;
+  assert.ok(restored);
+  assert.equal(restored.chapters[0].sections[0].question, original.consultation!.chapters[0].sections[0].question);
+  const html = renderToStaticMarkup(createElement(ConsultationPanel, { consultation: restored, facts: consultationFacts(context) }));
+  assert.match(html, /상담|이야기/);
+  assert.match(html, /생활에서는 이렇게 볼 수 있어요/);
+  assert.doesNotMatch(html, /내 경험에 비춰보기|도움을 받는 상황과 혼자 책임지는 상황에서 어떤 차이를 경험하셨나요/);
+});
 
 test("상담 한 장은 세부 설명·반대 조건·예시·질문·실천과 실제 근거 두 개를 함께 가진다", () => {
   const value = chapter();
@@ -110,7 +126,7 @@ test("상담 프롬프트는 개인 입력을 보내지 않고 판정 보류·�
 test("새 상담은 경력 사칭 없이 쉬운 생활말과 불편한 조건을 요청한다", () => {
   assert.equal(READING_STYLE_VERSION, 3);
   const prompt = consultationPrompt(context, "lifetime");
-  for (const phrase of ["30년", "사칭", "쉬운", "반대", "부담", "실제 경험", "현재", "계절"]) {
+  for (const phrase of ["30년", "사칭", "쉬운", "반대", "부담", "지나온 경험", "현재", "계절"]) {
     assert.ok(prompt.includes(phrase), phrase);
   }
   assert.ok(!prompt.includes(input.date));

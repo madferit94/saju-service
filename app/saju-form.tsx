@@ -19,6 +19,7 @@ import type { Consultation } from "../lib/saju/consultation";
 import DeepAnalysisPanel from "./deep-analysis-panel";
 import MansePanel from "./manse-panel";
 import FlowOverview from "./flow-overview";
+import DailyFortunePanel from "./daily-fortune-panel";
 import LifeSeasonsPanel from "./life-seasons-panel";
 import { buildLifeSeasons } from "../lib/saju/life-seasons";
 import { buildLocalReading } from "../lib/saju/reading";
@@ -434,6 +435,7 @@ export default function SajuForm() {
             <MansePanel chart={chart} benefactors={benefactors} />
           </section>
         )}
+        {chart && timeline && <DailyFortunePanel chart={chart} timeline={timeline} />}
         {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
         {lifeSeasons && <LifeSeasonsPanel report={lifeSeasons} />}
         {chart && timeline && fortune && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={setFortuneYear} disabled={isGenerating} />}
@@ -483,7 +485,6 @@ export default function SajuForm() {
                                 <p><strong>살릴 점</strong> {localInterpretation.strengths}</p>
                                 <p><strong>주의할 점</strong> {localInterpretation.cautions}</p>
                                 <p><strong>현실적인 조언</strong> {localInterpretation.advice}</p>
-                                <p className="period-reflection"><strong>경험을 돌아볼 질문</strong> {localInterpretation.reflection}</p>
                               </div>
                             </details>
                           )}
@@ -494,7 +495,6 @@ export default function SajuForm() {
                               <p><strong>살릴 점</strong> {interpretation.strengths}</p>
                               <p><strong>주의할 점</strong> {interpretation.cautions}</p>
                               <p><strong>현실적인 조언</strong> {interpretation.advice}</p>
-                              <p className="period-reflection"><strong>경험을 돌아볼 질문</strong> {interpretation.reflection}</p>
                             </div>
                           )}
                         </li>

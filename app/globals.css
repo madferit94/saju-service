@@ -386,11 +386,6 @@ select:focus-visible {
   font-weight: 700;
 }
 
-.period-reflection {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: #f3f5f1;
-}
 
 .evidence-block {
   margin-top: 28px;
@@ -709,6 +704,16 @@ select:focus-visible {
 .fortune-content + .fortune-content { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 16px; }
 .fortune-content > h3 { margin-top: 24px; }
 .fortune-prose { white-space: pre-wrap; line-height: 1.9; }
+.lifetime-guide { margin: 20px 0 24px; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: #f3f5f1; }
+.lifetime-guide h4, .lifetime-order-title, .lifetime-long-reading h4 { margin: 0 0 10px; font-size: 19px; }
+.lifetime-guide p { margin: 8px 0; }
+.lifetime-glossary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 18px 0 0; }
+.lifetime-glossary > div { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.lifetime-glossary dt { font-weight: 700; color: var(--primary); }
+.lifetime-glossary dd { margin: 2px 0 0; font-size: 14px; }
+.lifetime-basis { margin: 12px 0; padding: 12px 14px; border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; background: #f3f5f1; }
+.lifetime-basis p { margin: 4px 0 0; }
+.lifetime-long-reading { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--border); }
 .lifetime-grid, .month-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
 .lifetime-card, .month-card { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
 .lifetime-card h4 { margin: 4px 0 18px; font-size: 19px; }
@@ -728,13 +733,14 @@ select:focus-visible {
 .fortune-domain-card { min-width: 0; scroll-margin-top: 20px; }
 .fortune-domain-card:last-child { border-color: var(--border); background: var(--surface); }
 .fortune-domain-card h4 { margin: 0 0 12px; font-size: 20px; line-height: 1.5; }
-.fortune-domain-card .domain-question { margin-top: 20px; padding: 14px 16px; border-radius: 10px; background: #f7f2e8; }
+.fortune-domain-card .domain-interpretation { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 .fortune-domain-card .domain-extra { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
 .fortune-domain-card .fortune-evidence { margin-top: 16px; }
 .natal-evidence { margin-top: 28px; }
 .fortune-panel p, .fortune-panel li { overflow-wrap: anywhere; }
 
 @media (max-width: 520px) {
+  .lifetime-glossary { grid-template-columns: 1fr; }
   .lifetime-grid, .month-grid { grid-template-columns: 1fr; }
   .fortune-synthesis { padding: 18px; }
   .fortune-section-nav { gap: 6px; }
@@ -821,11 +827,11 @@ select:focus-visible {
 .consultation-chapter > h3 { font-weight: 700; font-size: 20px; padding: 20px 0; }
 .consultation-chapter article { padding: 8px 0 32px; }
 .consultation-prose { white-space: pre-line; font-size: 17px; }
-.consultation-aside, .consultation-question { margin: 20px 0; padding: 16px 20px; border-radius: 12px; background: #f6f3ed; }
-.consultation-question { background: var(--soft); }
-.consultation-aside strong, .consultation-question strong { display: block; margin-bottom: 6px; color: var(--primary); }
+.consultation-aside, .consultation-action { margin: 20px 0; padding: 16px 20px; border-radius: 12px; background: #f6f3ed; }
+.consultation-action { background: var(--soft); }
+.consultation-aside strong, .consultation-action strong { display: block; margin-bottom: 6px; color: var(--primary); }
 .consultation-panel summary:focus-visible, .consultation-toc a:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
-@media(max-width:600px) { .consultation-toc { grid-template-columns: 1fr; } .consultation-aside, .consultation-question { padding: 12px 14px; } }
+@media(max-width:600px) { .consultation-toc { grid-template-columns: 1fr; } .consultation-aside, .consultation-action { padding: 12px 14px; } }
 
 /* 만세력 보고서: 넓은 여백, 한글 우선, 계산 자료의 단계별 펼침 */
 main { width: min(100%, 980px); }
@@ -901,6 +907,20 @@ button, a, summary { touch-action: manipulation; }
 .daily-calendar td small { font-size: 12px; color: var(--muted); }
 .daily-calendar th:first-child, .daily-calendar td:first-child b { color: var(--ink-화); }
 .daily-calendar th:last-child, .daily-calendar td:last-child b { color: var(--ink-수); }
+.daily-fortune { margin-top: 24px; }
+.daily-fortune h2 { margin-bottom: 12px; }
+.daily-fortune-toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 48px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.daily-fortune-toggle:hover { color: var(--primary); }
+.daily-fortune-chevron { font-family: Arial, sans-serif; font-size: 30px; line-height: 1; transition: transform 180ms ease; }
+.daily-fortune-toggle[aria-expanded="true"] .daily-fortune-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .daily-fortune-chevron { transition: none; } }
+.daily-fortune-date { font-size: 18px; }
+.daily-fortune-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
+.daily-fortune-grid article { border: 1px solid var(--border); border-radius: 12px; padding: 18px; background: var(--soft); }
+.daily-fortune-grid h3 { margin: 0 0 10px; font-size: 17px; }
+.daily-fortune-grid p { margin: 0; line-height: 1.7; }
+.daily-fortune details { margin: 12px 0; }
+@media (max-width: 640px) { .daily-fortune-grid { grid-template-columns: 1fr; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .deep-analysis-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
 .deep-analysis-grid > article { padding: 24px; background: #faf8f4; border: 1px solid var(--border); border-radius: 12px; }
@@ -920,7 +940,7 @@ button, a, summary { touch-action: manipulation; }
 .consultation-example { border-left: 2px solid var(--border); padding: 4px 0 4px 18px; margin: 24px 0; }
 .consultation-example strong { font-size: 14px; color: var(--muted); }
 .consultation-example p { margin-bottom: 0; line-height: 1.8; }
-.consultation-question { background: #f4f2ed; line-height: 1.8; }
+.consultation-action { background: #f4f2ed; line-height: 1.8; }
 .fortune-evidence { font-size: 14px; line-height: 1.8; }
 .integrated-reading { margin-top: 32px; }
 .life-seasons h2, .life-graph-panel h2 { margin: 5px 0 14px; font-family: Georgia, "Batang", serif; font-size: clamp(29px,4vw,38px); font-weight: 500; }

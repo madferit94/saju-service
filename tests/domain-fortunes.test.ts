@@ -17,15 +17,20 @@ function reportFor(input: SajuInput, year = 2026) {
   return buildFortuneReport(calculate(input), calculateDaewoon(input, 0, year), year);
 }
 
-test("성인은 생활의 11개 운을 별도 카드로 읽고 카드마다 계산 근거와 점검 질문을 얻는다", () => {
+test("성인은 생활의 11개 운을 별도 카드로 읽고 카드마다 계산 근거와 사주 해석을 얻는다", () => {
   const report = reportFor(adult);
+  const pillars = calculate(adult).pillars;
+  const sourcePillar: Record<string, number> = { career: 1, study: 1, money: 1, business: 1, romance: 2, partner: 2, children: 3, family: 0, social: 1, health: 1, movement: 0 };
   assert.deepEqual(report.domains.map((domain) => domain.title), expectedAdultTitles);
   assert.equal(new Set(report.domains.map((domain) => domain.id)).size, expectedAdultTitles.length);
   for (const domain of report.domains) {
     assert.ok(domain.body.length > 60, `${domain.title}: 본문이 너무 짧습니다`);
     assert.ok(domain.evidence.length >= 2, `${domain.title}: 근거가 부족합니다`);
     assert.ok(domain.evidence.every((line) => line.length > 8), `${domain.title}: 빈 근거가 있습니다`);
-    assert.ok(domain.question.length > 15, `${domain.title}: 실제 경험 점검 질문이 없습니다`);
+    assert.ok(domain.interpretation.length > 70, `${domain.title}: 사주 해석이 너무 짧습니다`);
+    assert.ok(domain.interpretation.includes(report.annual.ganji), `${domain.title}: 해석에 선택 연도 간지가 없습니다`);
+    assert.ok(domain.interpretation.includes(report.annual.stemGod), `${domain.title}: 해석에 선택 연도 십성이 없습니다`);
+    assert.ok(domain.interpretation.includes(pillars[sourcePillar[domain.id]].text), `${domain.title}: 원국의 해당 기둥이 해석에 없습니다`);
     assert.ok(domain.evidence.some((line) => line.includes(report.annual.ganji)), `${domain.title}: 선택 연도 흐름의 근거가 없습니다`);
   }
 });
@@ -43,10 +48,15 @@ test("연도와 원국이 바뀌면 생활 운의 근거와 풀이가 실제로 
     domain.body !== differentBirth.domains[index].body ||
     domain.evidence.join("|") !== differentBirth.domains[index].evidence.join("|"),
   ).length >= 8);
+  assert.ok(base.domains.every((domain, index) => domain.interpretation !== nextYear.domains[index].interpretation), "선택 연도의 변화가 모든 주제 해석에 반영되어야 합니다");
+  assert.ok(base.domains.some((domain, index) => domain.interpretation !== differentBirth.domains[index].interpretation), "다른 원국의 풀이가 같아서는 안 됩니다");
 });
 
 test("미성년 결과는 배움과 생활 관계에 맞추며 혼인·임신·투자·사업 예언을 피한다", () => {
-  const report = reportFor({ ...adult, date: "2020-12-01" });
+  const childInput = { ...adult, date: "2020-12-01" };
+  const report = reportFor(childInput);
+  const pillars = calculate(childInput).pillars;
+  const sourcePillar: Record<string, number> = { learning: 1, family: 0, peers: 2, balance: 3, adaptation: 1 };
   const titles = report.domains.map((domain) => domain.title);
   assert.equal(titles.length, 5);
   assert.ok(titles.some((title) => title.includes("배움")));
@@ -55,18 +65,25 @@ test("미성년 결과는 배움과 생활 관계에 맞추며 혼인·임신·�
   assert.ok(titles.some((title) => title.includes("생활")));
   assert.ok(titles.some((title) => title.includes("적응")));
   assert.doesNotMatch(titles.join(" "), /연애|배우자|자녀|직업|사업|투자/);
-  const guidance = report.domains.map((domain) => domain.body + " " + domain.question).join(" ");
+  const guidance = report.domains.map((domain) => domain.body + " " + domain.interpretation).join(" ");
   assert.doesNotMatch(guidance, /결혼할|임신할|투자할|취업할|창업할|배우자를 만날|자녀를 낳을/);
+  for (const domain of report.domains) {
+    assert.ok(domain.interpretation.includes(report.annual.ganji), `${domain.title}: 선택 연도 간지가 없습니다`);
+    assert.ok(domain.interpretation.includes(report.annual.stemGod), `${domain.title}: 선택 연도 십성이 없습니다`);
+    assert.ok(domain.interpretation.includes(pillars[sourcePillar[domain.id]].text), `${domain.title}: 원국의 해당 기둥이 해석에 없습니다`);
+  }
 });
 
-test("생활 운 카드와 질문은 결과 화면에 바로 보이고 계산 근거는 선택해 읽는다", () => {
+test("생활 운 카드의 사주 해석은 바로 보이고 질문 칸 없이 계산 근거를 펼쳐 읽는다", () => {
   const report = reportFor(adult);
   const html = renderToStaticMarkup(createElement(FortunePanel, { report, reading: null }));
   const domainsHtml = html.slice(html.indexOf('id="fortune-domains"'));
   for (const domain of report.domains) {
     assert.ok(domainsHtml.includes(`<h4>${domain.title}</h4>`), `${domain.title}: 화면에 제목이 없습니다`);
-    assert.ok(domainsHtml.includes(domain.question), `${domain.title}: 화면에 점검 질문이 없습니다`);
+    assert.ok(domainsHtml.includes(domain.interpretation), `${domain.title}: 화면에 사주 해석이 없습니다`);
     assert.ok(domainsHtml.includes(domain.evidence[0]), `${domain.title}: 화면에 계산 근거가 없습니다`);
   }
   assert.match(domainsHtml, /<details[^>]*class="fortune-evidence"/);
+  assert.match(domainsHtml, /사주에서 읽히는 점/);
+  assert.doesNotMatch(domainsHtml, /내 경험에 비춰보기|<[^>]*class="[^"]*domain-question/);
 });
