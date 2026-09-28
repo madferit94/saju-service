@@ -109,3 +109,12 @@ test("종합 해석과 장별 상담은 같은 기본 기준을 포함하고 출
     assert.ok(overallPrompt.includes(firstSentenceRule), `종합 해석 지시에 '${firstSentenceRule}' 규칙이 있어야 함`);
   }
 });
+
+test("두 AI 해석 모두 내부 보류 상태를 독자에게 읽히는 사주 풀이로 바꾸도록 지시한다", () => {
+  for (const prompt of prompts()) {
+    assert.match(prompt, /'판정 보류', '조건부 후보', '강약 경계'는 내부 계산 상태입니다/);
+    assert.match(prompt, /그대로 (?:쓰지 말고|말하지 말고)/);
+    assert.match(prompt, /실제(?:로)? 사주에 나타난|사주에 실제로 나타난/);
+    assert.match(prompt, /최종 용신이나 전성기/);
+  }
+});

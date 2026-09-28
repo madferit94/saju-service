@@ -41,13 +41,15 @@ test("조건부 도움 오행이 있는 원국은 대운 두 글자와 일치한
       graph.periods.filter((period) => period.level === max && max > 0).map((period) => period.index),
       "최고점 동점 구간을 모두 후보로 남겨야 합니다");
     const html = render(graph);
-    assert.match(html, /전성기 후보/);
+    assert.match(html, /기운을 펼치기 좋은 시기/);
+    assert.match(html, /균형을 돕는 오행이 대운과 가장 많이 맞물립니다/);
+    assert.doesNotMatch(html, /판정 보류|조건부 후보/);
     assert.match(html, /성취나 행복을 보장하지는 않습니다/);
     assert.doesNotMatch(html, /계절에 따른 전성기|건강·수명 예측/);
   }
 });
 
-test("강약 또는 도움 오행 판단이 보류되면 전성기를 표시하지 않고 변화 단서로 설명한다", () => {
+test("강약 또는 도움 오행 판단이 보류된 원국도 합·충·반복을 삶의 변화로 풀이한다", () => {
   for (const date of ["2000-01-01", "1997-06-09"]) {
     const birth = input(date);
     const graph = buildLifeGraph(calculate(birth), calculateDaewoon(birth, 0, 2026));
@@ -55,10 +57,11 @@ test("강약 또는 도움 오행 판단이 보류되면 전성기를 표시하�
     assert.deepEqual(graph.favorable, []);
     assert.ok(graph.periods.every((period) => period.level === Math.min(2, period.activityCount)));
     const html = render(graph);
-    assert.match(html, /전성기 판정 보류/);
-    assert.match(html, /변화 단서/);
+    assert.match(html, /변화가 두드러지는 시기/);
+    assert.match(html, /태어난 사주와 10년 운에서 서로 맞물리거나 부딪치고, 같은 글자가 되풀이되는 모습이 가장 많습니다/);
+    assert.match(html, /관계와 역할, 익숙한 방식을 새로 맞추는 흐름/);
     assert.doesNotMatch(html, /<strong>전성기 후보<\/strong>/);
-    assert.match(html, /전성기를 뜻하지 않습니다/);
+    assert.doesNotMatch(html, /판정 보류|전성기를 뜻하지 않습니다|일반적인 강약/);
   }
 });
 
