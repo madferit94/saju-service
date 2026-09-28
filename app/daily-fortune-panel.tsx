@@ -70,7 +70,6 @@ export default function DailyFortunePanel({ chart, timeline }: { chart: SajuChar
         <article><h3>주의할 점</h3><p>{fortune.risk}</p></article>
         <article><h3>오늘 해볼 일</h3><p>{fortune.action}</p></article>
       </div>
-      <details><summary>이렇게 읽은 근거</summary><p>현재 흐름: {fortune.period}</p><ul>{fortune.evidence.map((line, index) => <li key={index}>{line}</li>)}</ul></details>
       <p className="method-help">전통 명리의 참고 풀이이며 오늘 일어날 사건이나 성과를 확정하지 않습니다. 일진은 양력 날짜의 정오를 기준으로 계산합니다.</p>
     </>}
     </div>

@@ -74,16 +74,15 @@ test("미성년 결과는 배움과 생활 관계에 맞추며 혼인·임신·�
   }
 });
 
-test("생활 운 카드의 사주 해석은 바로 보이고 질문 칸 없이 계산 근거를 펼쳐 읽는다", () => {
+test("생활 운 카드의 사주 해석은 바로 보이고 계산 근거 접기 창은 표시하지 않는다", () => {
   const report = reportFor(adult);
   const html = renderToStaticMarkup(createElement(FortunePanel, { report, reading: null }));
   const domainsHtml = html.slice(html.indexOf('id="fortune-domains"'));
   for (const domain of report.domains) {
     assert.ok(domainsHtml.includes(`<h4>${domain.title}</h4>`), `${domain.title}: 화면에 제목이 없습니다`);
     assert.ok(domainsHtml.includes(domain.interpretation), `${domain.title}: 화면에 사주 해석이 없습니다`);
-    assert.ok(domainsHtml.includes(domain.evidence[0]), `${domain.title}: 화면에 계산 근거가 없습니다`);
   }
-  assert.match(domainsHtml, /<details[^>]*class="fortune-evidence"/);
+  assert.doesNotMatch(domainsHtml, /이렇게 읽은 사주 근거|<details[^>]*class="fortune-evidence"/);
   assert.match(domainsHtml, /사주에서 읽히는 점/);
   assert.doesNotMatch(domainsHtml, /내 경험에 비춰보기|<[^>]*class="[^"]*domain-question/);
 });

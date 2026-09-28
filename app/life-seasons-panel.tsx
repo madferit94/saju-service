@@ -17,8 +17,6 @@ export default function LifeSeasonsPanel({ report }: { report: LifeSeasonsReport
     <h3>내 대운을 하나씩 읽기</h3><div className="life-periods">{periods.map(p=><details key={p.index} className={`life-period season-${p.season}`}>
       <summary><span className="life-period-season">{p.seasonLabel}{p.secondarySeason?` + ${SEASONS[p.secondarySeason].label}`:""}</span><strong>{p.startYear}~{p.endYear}년 · {p.startAge}~{p.endAge}세</strong><span>{p.korean}({p.ganji})</span>{p.index===report.current?.periodIndex&&<span className="current-badge">현재</span>}</summary>
       <div className="life-period-body"><p className="life-reading-lead">{SEASONS[p.season].description}</p><p><strong>이렇게 읽은 이유</strong>{p.reason}</p><p><strong>살릴 수 있는 점</strong>{p.opportunity}</p><p><strong>불편하지만 봐야 할 점</strong>{p.risk}</p><p><strong>생활에서 해볼 개운법</strong>{p.action}</p>
-        <details className="fortune-evidence"><summary>네 기둥과 비교한 계산 근거</summary><ul>{p.evidence.map((line,i)=><li key={i}>{line}</li>)}</ul></details>
       </div></details>)}</div>
-    <details className="fortune-evidence"><summary>4계절을 나눈 기준과 한계</summary><p>{report.method}</p></details>
   </section>;
 }

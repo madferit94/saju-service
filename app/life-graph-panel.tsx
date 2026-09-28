@@ -76,7 +76,7 @@ export default function LifeGraphPanel({ report, noteStorageKey }: { report: Lif
     <div className="life-graph-wrap" role="region" aria-label="대운별 인생 흐름 그래프" tabIndex={0}>
       <svg viewBox="0 0 760 278" className="life-graph" role="img" aria-labelledby="life-graph-title life-graph-description">
         <title id="life-graph-title">사주 기반 대운 흐름과 현재 위치</title>
-        <desc id="life-graph-description">{peakMode ? "각 점은 대운 두 글자와 조건부 도움 오행의 일치 정도입니다. 높은 점은 전성기 후보입니다." : "도움 오행 판단이 보류되어 각 점은 원국과 대운 사이의 변화 단서 정도입니다. 전성기를 뜻하지 않습니다."} 현재 연도 위치와 각 구간의 근거는 그래프 아래에서 읽을 수 있습니다.</desc>
+        <desc id="life-graph-description">{peakMode ? "각 점은 대운 두 글자와 조건부 도움 오행의 일치 정도입니다. 높은 점은 전성기 후보입니다." : "도움 오행 판단이 보류되어 각 점은 원국과 대운 사이의 변화 단서 정도입니다. 전성기를 뜻하지 않습니다."} 점선은 현재 연도 위치를 나타냅니다.</desc>
         <line x1={left} x2={right} y1={bottom} y2={bottom} className="graph-guide"/>
         <path d={line} className="life-path graph-flow"/>
         {centers.map(({ period, cx }, index) => <g key={period.index}>
@@ -106,16 +106,5 @@ export default function LifeGraphPanel({ report, noteStorageKey }: { report: Lif
         </article>;
       })}</div>
     </details>
-    <details className="fortune-evidence life-graph-details"><summary>시기별 해석 근거 보기</summary>
-      <div className="life-graph-periods">{periods.map((period) => <article key={period.index} className={period.index === report.current?.index ? "graph-current-period" : ""}>
-        <h3>{period.startAge}–{period.endAge}세 · {period.startYear}–{period.endYear}년 {period.korean} 대운 {period.index === report.current?.index && <span className="current-badge">현재</span>}</h3>
-        <p>{peakMode
-          ? `앞글자 ${period.stemElement}, 아랫글자 중심 ${period.branchElement} 중 조건부 도움 오행(${report.favorable.join("·")})과 만나는 글자는 ${period.matchingElements.length}개입니다.`
-          : `원국과의 합·충·반복 관계가 ${period.activityCount}건 확인됩니다. 변화 단서의 많고 적음으로 길흉을 정하지 않습니다.`}</p>
-        <p>대운 앞글자의 생활 주제: {period.theme}</p>
-        {(period.connections.length + period.adjustments.length + period.repeats.length > 0) && <ul>{[...period.connections, ...period.adjustments, ...period.repeats].map((line, index) => <li key={index}>{line}</li>)}</ul>}
-      </article>)}</div>
-    </details>
-    <details className="fortune-evidence"><summary>그래프 계산 기준과 한계</summary><p>{report.method}</p></details>
   </section>;
 }

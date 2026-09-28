@@ -58,6 +58,8 @@ test("기존 저장 상담의 질문 필드는 보존하되 결과 화면에 질
   const html = renderToStaticMarkup(createElement(ConsultationPanel, { consultation: restored, facts: consultationFacts(context) }));
   assert.match(html, /상담|이야기/);
   assert.match(html, /생활에서는 이렇게 볼 수 있어요/);
+  assert.match(html, /지금 해볼 일/);
+  assert.doesNotMatch(html, /<details\b|왜 이렇게 읽었나요\? · 사주 근거와 다른 가능성/);
   assert.doesNotMatch(html, /내 경험에 비춰보기|도움을 받는 상황과 혼자 책임지는 상황에서 어떤 차이를 경험하셨나요/);
 });
 

@@ -867,9 +867,9 @@ button, a, summary { touch-action: manipulation; }
 .manse-stars { font-size: 13px; }
 .manse-benefactors { padding: 18px 0; }
 .star-chips { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
-.star-chips details { border: 1px solid var(--border); border-radius: 10px; padding: 0 14px; }
-.star-chips summary { font-weight: 600; }
-.star-chips summary span { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+.star-chips .star-chip { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.star-chips .star-chip strong { display: block; font-weight: 600; }
+.star-chips .star-chip span { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 4px; }
 .manse-elements { border-top: 1px solid var(--border); padding-top: 28px; }
 .manse-elements h3 { font-size: 26px; margin: 10px 0; }
 .distribution-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }

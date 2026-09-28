@@ -10,7 +10,7 @@ import type { GeminiSajuReading } from "../lib/saju/gemini-reading";
 
 const birth: SajuInput = { date: "1994-12-01", time: "08:37", calendar: "solar", topic: "general" };
 
-test("선택 연도의 흐름은 먼저 읽고 월운 상세와 계산 근거는 선택해 연다", () => {
+test("선택 연도의 흐름은 먼저 읽고 월운 상세만 선택해 연다", () => {
   const report = buildFortuneReport(calculate(birth), calculateDaewoon(birth, 0, 2026), 2026);
   const html = renderToStaticMarkup(createElement(FortunePanel, { report, reading: null }));
   const annual = html.slice(html.indexOf('id="fortune-annual"'), html.indexOf('id="fortune-domains"'));
@@ -18,8 +18,7 @@ test("선택 연도의 흐름은 먼저 읽고 월운 상세와 계산 근거는
   const monthDetails = [...annual.matchAll(/<details[^>]*class="month-card"[^>]*>/g)];
   assert.equal(monthDetails.length, 12, "절입 기준 12개 월운은 유지합니다");
   assert.ok(monthDetails.every(([tag]) => !/\bopen(?:=|\s|>)/.test(tag)), "월운 상세는 기본으로 접어 둡니다");
-  assert.match(annual, /<details[^>]*class="fortune-evidence"/);
-  assert.doesNotMatch(annual, /<details[^>]*class="fortune-evidence"[^>]*open/);
+  assert.doesNotMatch(annual, /<details[^>]*class="fortune-evidence"|이렇게 읽은 사주 근거/);
 });
 
 test("미성년 운은 AI의 성인 직업·돈·관계 문장을 섞지 않고 성인 카드는 로컬 풀이도 유지한다", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FlowAnalysis, FortuneReport } from "../lib/saju/fortune";
+import type { FortuneReport } from "../lib/saju/fortune";
 import type { GeminiSajuReading } from "../lib/saju/gemini-reading";
 
 const godExplanations: Record<string, string> = {
@@ -19,13 +19,6 @@ const godExplanations: Record<string, string> = {
 function topicParticle(word: string): string {
   const last = word.codePointAt(word.length - 1) ?? 0;
   return last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0 ? "은" : "는";
-}
-
-function Evidence({ flow }: { flow: FlowAnalysis }) {
-  return <details className="fortune-evidence">
-    <summary>이렇게 읽은 사주 근거</summary>
-    <ul>{flow.evidence.map((line, i) => <li key={i}>{line}</li>)}</ul>
-  </details>;
 }
 
 export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" }: {
@@ -71,7 +64,6 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
           </div> : <p className="lifetime-basis"><strong>이렇게 판단한 근거</strong> 이 시기는 첫 대운이 시작되기 전입니다. 아직 적용되지 않은 대운의 글자나 십성을 임의로 붙이지 않고, 타고난 사주와 생활 환경을 중심으로 읽습니다.</p>}
           <p><strong>이 시기의 해석</strong> {period.summary}</p>
           {period.risk && <p><strong>함께 살필 부담</strong> {period.risk}</p>}
-          {period.evidence && <details className="fortune-evidence"><summary>자세한 계산 근거</summary><ul>{period.evidence.map((line, i) => <li key={i}>{line}</li>)}</ul></details>}
         </details>)}
         {!stage.periods.length && <p>계산된 대운 범위에 해당하는 구간이 없습니다.</p>}
       </article>)}</div>
@@ -85,7 +77,6 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
         <p><strong>걸리기 쉬운 지점</strong> {report.annual.risk}</p>
         <p><strong>선택의 기준</strong> {report.annual.action}</p>
       </>}
-      <Evidence flow={report.annual} />
       <h3>월별로 달라지는 흐름</h3>
       <p className="method-help">월운은 매월 1일이 아닌 절기가 시작되는 시각에 바뀝니다. 1월 절입 전은 전년도 12월 월운이며, 아래 시작 시각 이상·다음 시작 시각 미만에 적용됩니다.</p>
       <div className="month-grid">{report.months.map((month) => {
@@ -98,32 +89,22 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
             <p><strong>주의할 상황</strong> {month.risk}</p>
             <p><strong>이번 달 실천</strong> {month.action}</p>
           </>}
-          <Evidence flow={month} />
         </details>;
       })}</div>
     </section>
     <section className="fortune-content" id="fortune-domains" aria-labelledby="fortune-domains-title">
       <h3 id="fortune-domains-title">생활 주제별 운</h3>
-      <p className="method-help">각 주제는 원국의 자리와 십성, {report.year}년 세운을 함께 읽었습니다. 풀이에 사용한 계산값은 카드 아래에서 확인할 수 있습니다.</p>
+      <p className="method-help">각 주제는 원국의 자리와 십성, {report.year}년 세운을 함께 읽었습니다.</p>
       <nav className="fortune-domain-nav" aria-label="생활 운 항목 바로가기">{report.domains.map((domain) => <a key={domain.id} href={`#fortune-domain-${domain.id}`}>{domain.title}</a>)}</nav>
       <div className="reading-grid fortune-domain-grid">{report.domains.map((domain) => {
         const extra = domain.id === "career" ? reading?.career : domain.id === "money" ? reading?.money : domain.id === "partner" ? reading?.relationships : null;
         return <article className="reading-card fortune-domain-card" id={`fortune-domain-${domain.id}`} key={domain.id}>
           <h4>{domain.title}</h4><p>{domain.body}</p>
-          {extra && <details className="fortune-evidence domain-extra"><summary>AI 종합 해석 더 읽기</summary><p>{extra}</p></details>}
+          {extra && <details className="domain-extra"><summary>AI 종합 해석 더 읽기</summary><p>{extra}</p></details>}
           <p className="domain-interpretation"><strong>사주에서 읽히는 점</strong> {domain.interpretation}</p>
-          <details className="fortune-evidence"><summary>이렇게 읽은 사주 근거</summary><ul>{domain.evidence.map((line, index) => <li key={index}>{line}</li>)}</ul></details>
         </article>;
       })}</div>
     </section>
-    <details className="fortune-evidence natal-evidence">
-      <summary>타고난 지장간·합충과 계산 기준</summary>
-      <p>십성은 나를 뜻하는 일간과 다른 천간의 관계입니다. 지장간은 지지 속 천간을 뜻하며, 아래 표는 대표 오행 8자 개수와 구분해 읽습니다.</p>
-      {report.natal.hiddenStems.map((p) => <p key={p.label}><strong>{p.label} {p.branch}({p.korean})</strong> · {p.stems.map((x) => x.stem + "(" + x.korean + "·" + x.god + ")").join(", ")}</p>)}
-      <ul>{report.natal.contacts.map((line, i) => <li key={i}>{line}</li>)}</ul>
-      {!report.natal.contacts.length && <p>계산 범위의 천간합·지지육합·충·같은 지지 반복은 확인되지 않았습니다.</p>}
-      <p>{report.method}</p>
-    </details>
     <p className="note">전통 명리의 해석을 실제 경험·현재 여건과 비교해 읽어 주세요. 미래의 사건이나 수익, 수명을 보장하는 결과는 아닙니다.</p>
   </section>;
 }
