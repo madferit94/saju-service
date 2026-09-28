@@ -22,6 +22,8 @@ import FlowOverview from "./flow-overview";
 import DailyFortunePanel from "./daily-fortune-panel";
 import LifeSeasonsPanel from "./life-seasons-panel";
 import { buildLifeSeasons } from "../lib/saju/life-seasons";
+import LifeGraphPanel from "./life-graph-panel";
+import { buildLifeGraph } from "../lib/saju/life-graph";
 import { buildLocalReading } from "../lib/saju/reading";
 import { clearSavedSajuResult, readSavedSajuResult, writeSavedSajuResult } from "../lib/saju/persistence";
 import type { Birthplace } from "../lib/saju/birth-moment";
@@ -82,6 +84,7 @@ export default function SajuForm() {
   const visibleReading = reading?.readingVersion === 2 && reading.analysisVersion === 1 && reading.fortuneYear === fortuneYear ? reading : null;
   const deepAnalysis = useMemo(() => chart ? analyzeNatal(chart) : null, [chart]);
   const lifeSeasons = useMemo(() => chart && timeline ? buildLifeSeasons(chart, timeline) : null, [chart, timeline]);
+  const lifeGraph = useMemo(() => chart && timeline ? buildLifeGraph(chart, timeline) : null, [chart, timeline]);
   const cloudPayload = useMemo<CloudPayload | null>(() => chart && timeline && pendingInput && yunGender !== null ? {
     version: 1, fortuneYear,
     result: { version: 1, savedAt: resultSavedAt, input: pendingInput, yunGender, chart, timeline, benefactors, reading, consultation },
@@ -436,8 +439,9 @@ export default function SajuForm() {
           </section>
         )}
         {chart && timeline && <DailyFortunePanel chart={chart} timeline={timeline} />}
-        {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
+        {lifeGraph && <LifeGraphPanel report={lifeGraph} />}
         {lifeSeasons && <LifeSeasonsPanel report={lifeSeasons} />}
+        {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
         {chart && timeline && fortune && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={setFortuneYear} disabled={isGenerating} />}
         {fortune && (
           <div className="integrated-reading">
@@ -477,8 +481,8 @@ export default function SajuForm() {
                           <strong className="period-name">{period.index === 0 ? "대운 시작 전" : `${period.korean} 대운`}</strong>
                           {period.index !== 0 && <span className="period-hanja">{period.ganji}</span>}
                           <span className="period-age">사주식 나이 {period.startAge}–{period.endAge}세</span>
-                          {localInterpretation && (
-                            <details className="period-local-disclosure" open>
+                          {localInterpretation && !interpretation && (
+                            <details className="period-local-disclosure" open={period.status === "current"}>
                               <summary>이 대운 자세히 읽기</summary>
                               <div className="period-reading local-period-reading">
                                 <p className="period-theme">{localInterpretation.theme}</p>
@@ -489,13 +493,16 @@ export default function SajuForm() {
                             </details>
                           )}
                           {interpretation && (
-                            <div className="period-reading">
+                            <details className="period-local-disclosure" open={period.status === "current"}>
+                              <summary>이 대운 자세히 읽기</summary>
+                              <div className="period-reading">
 
                               <p className="period-theme">{interpretation.theme}</p>
                               <p><strong>살릴 점</strong> {interpretation.strengths}</p>
                               <p><strong>주의할 점</strong> {interpretation.cautions}</p>
                               <p><strong>현실적인 조언</strong> {interpretation.advice}</p>
-                            </div>
+                              </div>
+                            </details>
                           )}
                         </li>
                       );

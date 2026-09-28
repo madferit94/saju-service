@@ -38,21 +38,26 @@ export function buildLifeSeasons(chart:SajuChart,timeline:DaewoonTimeline) {
     const reason=`${p.korean}(${p.ganji}) 대운의 앞글자는 ${flow.stemGod}(${godPlain[flow.stemGod]}), 아래글자의 중심은 ${branchGod}(${godPlain[branchGod]})으로 읽습니다. ${SEASONS[season].label}은 앞글자의 주제이며${secondarySeason?` 아래글자에는 ${SEASONS[secondarySeason].label}의 주제도 함께 있습니다.`:" 두 글자의 계절 주제가 같습니다."}`;
     const childhood=forLifeStage(flow,Math.min(p.endAge,19));
     const isChild=p.endAge<20,spansAdulthood=p.startAge<20 && p.endAge>=20;
-    const reading=isChild?childhood:flow;
+    const later=forLifeStage(flow,Math.max(60,p.endAge));
+    const isLater=p.startAge>=60,spansLater=p.startAge<60 && p.endAge>=60;
+    const reading=isChild?childhood:isLater?later:flow;
     return {...p,season,seasonLabel:SEASONS[season].label,secondarySeason,stemGod:flow.stemGod,branchGod,reason,
-      opportunity:spansAdulthood?`20세 전에는 ${childhood.opportunity} 20세 이후에는 ${flow.opportunity}`:reading.opportunity,
-      risk:spansAdulthood?`20세 전에는 ${childhood.risk} 20세 이후에는 ${flow.risk}`:reading.risk,
-      action:spansAdulthood?`20세 전에는 ${childhood.action} 20세 이후에는 ${flow.action}`:reading.action,
+      opportunity:spansAdulthood?`20세 전에는 ${childhood.opportunity} 20세 이후에는 ${flow.opportunity}`:spansLater?`60세 전에는 ${flow.opportunity} 60세 이후에는 ${later.opportunity}`:reading.opportunity,
+      risk:spansAdulthood?`20세 전에는 ${childhood.risk} 20세 이후에는 ${flow.risk}`:spansLater?`60세 전에는 ${flow.risk} 60세 이후에는 ${later.risk}`:reading.risk,
+      action:spansAdulthood?`20세 전에는 ${childhood.action} 20세 이후에는 ${flow.action}`:spansLater?`60세 전에는 ${flow.action} 60세 이후에는 ${later.action}`:reading.action,
       evidence:flow.evidence};
   });
   const active=periods.find(p=>p.startYear<=timeline.currentYear && timeline.currentYear<=p.endYear);
+  const currentAge=active ? active.startAge+timeline.currentYear-active.startYear : null;
+  const currentReading=active && currentAge!==null ? forLifeStage(analyzeFlow(chart,active.ganji,`${active.korean} 대운`),currentAge) : null;
   const current=active ? {
     periodIndex:active.index,currentYear:timeline.currentYear,startYear:active.startYear,endYear:active.endYear,
     progress:(timeline.currentYear-active.startYear+.5)/(active.endYear-active.startYear+1),
     season:active.season,seasonLabel:active.seasonLabel,
+    opportunity:currentReading!.opportunity,risk:currentReading!.risk,action:currentReading!.action,
   } : null;
   const preDaewoon=!current && timeline.periods.some(p=>p.index===0 && p.startYear<=timeline.currentYear && timeline.currentYear<=p.endYear);
   return {periods,current,preDaewoon,
-    method:"네 기둥에서 나를 나타내는 글자와 각 대운의 앞글자·아래글자 중심 글자 사이의 십성을 비교합니다. 앞글자의 주제를 대표 계절로, 다른 아래글자의 주제는 함께 오는 계절로 표시합니다. 봄·여름·가을·겨울은 반복되거나 순서를 건너뛸 수 있습니다. 그래프의 위아래는 운의 좋고 나쁨, 점수, 성취 확률이나 수명을 뜻하지 않습니다. 실제 경험과 환경을 함께 비교해 읽어 주세요."};
+    method:"네 기둥에서 나를 나타내는 글자와 각 대운의 앞글자·아래글자 중심 글자 사이의 십성을 비교합니다. 앞글자의 주제를 대표 계절로, 다른 아래글자의 주제는 함께 오는 계절로 표시합니다. 봄·여름·가을·겨울은 반복되거나 순서를 건너뛸 수 있습니다. 계절은 길흉 점수나 성취 확률이 아니며, 실제 경험과 환경을 함께 비교해 읽어 주세요."};
 }
 export type LifeSeasonsReport = ReturnType<typeof buildLifeSeasons>;

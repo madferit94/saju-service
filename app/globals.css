@@ -953,8 +953,28 @@ button, a, summary { touch-action: manipulation; }
 .season-current span { display: block; font-weight: 700; font-size: 20px; color: var(--ink); }
 .season-current strong { display: block; margin-top: 5px; font-size: 14px; }
 .season-current p { margin-bottom: 0; line-height: 1.75; }
-.life-graph-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: #fdfcf9; }
-.life-graph { display: block; width: 100%; min-width: 650px; height: auto; }
+.season-current p + p { margin-top: 12px; }
+.season-current p b { color: var(--primary); }
+.current-reading-guide { margin: 22px 0; padding: 20px 24px; border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: 12px; background: #f8f6f0; line-height: 1.75; }
+.current-reading-guide > strong { display: block; font-size: 18px; }
+.current-reading-guide p { margin: 10px 0; }
+.current-reading-guide a { color: var(--primary); font-weight: 700; text-underline-offset: 3px; }
+.life-graph-highlight { margin: 22px 0 14px; padding: 18px 20px; border-radius: 12px; border: 1px solid #c6d6ca; background: #f3f7f2; }
+.life-graph-highlight strong { display: block; color: var(--primary); font-size: 19px; }
+.life-graph-highlight p { margin: 6px 0 0; line-height: 1.65; }
+.life-graph-now { margin: 0 0 10px; font-weight: 700; }
+.life-graph-wrap { overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #fdfcf9; }
+.life-graph { display: block; width: 100%; height: auto; }
+.graph-guide { stroke: #d9ded7; stroke-width: 1; }
+.life-path.graph-flow { stroke: #346d60; stroke-width: 5; }
+.graph-flow-point { fill: #346d60; stroke: #fff; stroke-width: 2; }
+.graph-peak-point { fill: #b47d37; stroke: #fff; stroke-width: 3; }
+.life-graph-periods { display: grid; gap: 8px; margin: 14px 0; }
+.life-graph-periods article { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: #fdfcf9; }
+.life-graph-periods article.graph-current-period { border-color: #8da99a; background: #f3f7f2; }
+.life-graph-periods h3 { margin: 0 0 8px; font-size: 16px; }
+.life-graph-periods article > p, .life-graph-periods article > ul { margin: 8px 0; line-height: 1.7; }
+.life-graph-periods li + li { margin-top: 6px; }
 .season-guide { stroke: #d3d8d2; stroke-width: 1; stroke-dasharray: 4 5; }
 .season-axis { font-size: 15px; font-weight: 700; }
 .life-year-label { fill: #526055; font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -993,6 +1013,7 @@ button, a, summary { touch-action: manipulation; }
   .intro { font-size: 15px; }
   .result, .timeline-result, .reading-result, .gemini-consent, .fortune-panel, .deep-analysis, .consultation-panel, .flow-overview, .life-seasons, .life-graph-panel { padding: 22px 16px; }
   .season-current { padding: 16px; }
+  .current-reading-guide { padding: 16px; }
   .life-period { padding: 0 13px; }
   .distribution-grid { grid-template-columns: 1fr; }
   .distribution-grid > article { padding: 18px; }

@@ -16,6 +16,11 @@ const godExplanations: Record<string, string> = {
   정인: "도움과 체계적인 배움을 받아 기반을 다지는 힘입니다. 준비한 것을 실제로 쓰는지도 살핍니다.",
 };
 
+function topicParticle(word: string): string {
+  const last = word.codePointAt(word.length - 1) ?? 0;
+  return last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0 ? "은" : "는";
+}
+
 function Evidence({ flow }: { flow: FlowAnalysis }) {
   return <details className="fortune-evidence">
     <summary>이렇게 읽은 사주 근거</summary>
@@ -36,6 +41,13 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
     <p className="result-label">평생의 바탕에서 한 달의 선택까지</p>
     <h2 id="fortune-title">나의 평생 운과 지금의 흐름</h2>
     <p className="fortune-synthesis">{reading?.synthesis ?? report.synthesis}</p>
+    <div className="current-reading-guide">
+      <strong>지금 읽을 흐름</strong>
+      <p>원국의 특징에 {report.annual.daewoon.endsWith("대운 시작 전") ? `${report.annual.daewoon}의 생활 환경` : `${report.annual.daewoon} 대운의 주제`}를 함께 놓고, {report.year}년 {report.annual.korean} 세운을 더해 읽습니다. 현재 선택한 연도의 활용점과 부담을 먼저 살핀 뒤 생활 주제로 이어서 읽어 보세요.</p>
+      <p><b>활용점</b> {report.annual.opportunity}</p>
+      <p><b>부담이 커질 조건</b> {report.annual.risk}</p>
+      <a href="#fortune-domains">관심 있는 생활 주제 고르기</a>
+    </div>
     <nav className="fortune-section-nav" aria-label="운세 주제 바로가기"><a href="#fortune-lifetime">평생운</a><a href="#fortune-annual">{report.year}년 · 월별운</a><a href="#fortune-domains">생활 주제별 운</a></nav>
     <section className="fortune-content" id="fortune-lifetime" aria-labelledby="fortune-lifetime-title">
       <h3 id="fortune-lifetime-title">인생 전체를 이어서 읽기</h3>
@@ -50,11 +62,11 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
       <p className="method-help">나를 뜻하는 일간 {report.natal.dayMaster.character}({report.natal.dayMaster.korean})을 기준으로 각 대운의 윗글자와 아랫글자 속 중심 글자를 비교했습니다. 먼저 계산된 관계를 보고, 그 아래에서 시기의 해석을 읽어 주세요.</p>
       <div className="lifetime-grid">{report.lifetime.map((stage) => <article className="lifetime-card" key={stage.label}>
         <span className="result-label">{stage.range}</span><h4>{stage.label}</h4>
-        {stage.periods.map((period) => <details key={period.index} open>
+        {stage.periods.map((period) => <details key={period.index} open={period.startYear<=report.year && report.year<=period.endYear}>
           <summary>{period.startYear}–{period.endYear} · {period.startAge}–{period.endAge}세 · {period.korean || "대운 시작 전"}</summary>
           {period.ganji ? <div className="lifetime-basis">
             <strong>이렇게 판단한 근거</strong>
-            <p>대운 {period.ganji}({period.korean})의 윗글자 {period.ganji[0]}은 일간 {report.natal.dayMaster.character}({report.natal.dayMaster.korean})과 비교하면 <strong>{period.stemGod}</strong> 관계입니다. 아랫글자 {period.ganji[1]} 속 중심 지장간 {period.hiddenStems?.[0]?.stem}({period.hiddenStems?.[0]?.korean})는 <strong>{period.hiddenStems?.[0]?.god}</strong> 관계입니다.</p>
+            <p>대운 {period.ganji}({period.korean})의 윗글자 {period.ganji[0]}({period.korean[0]}){topicParticle(period.korean[0])} 일간 {report.natal.dayMaster.character}({report.natal.dayMaster.korean})과 비교하면 <strong>{period.stemGod}</strong> 관계입니다. 아랫글자 {period.ganji[1]} 속 중심 지장간 {period.hiddenStems?.[0]?.stem}({period.hiddenStems?.[0]?.korean}){topicParticle(period.hiddenStems?.[0]?.korean ?? "")} <strong>{period.hiddenStems?.[0]?.god}</strong> 관계입니다.</p>
             {period.evidence && period.evidence.length > 2 && <><p><strong>타고난 사주와 만나는 지점</strong></p><ul className="fortune-facts">{period.evidence.slice(2).map((line, i) => <li key={i}>{line}</li>)}</ul></>}
           </div> : <p className="lifetime-basis"><strong>이렇게 판단한 근거</strong> 이 시기는 첫 대운이 시작되기 전입니다. 아직 적용되지 않은 대운의 글자나 십성을 임의로 붙이지 않고, 타고난 사주와 생활 환경을 중심으로 읽습니다.</p>}
           <p><strong>이 시기의 해석</strong> {period.summary}</p>
@@ -78,7 +90,7 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
       <p className="method-help">월운은 매월 1일이 아닌 절기가 시작되는 시각에 바뀝니다. 1월 절입 전은 전년도 12월 월운이며, 아래 시작 시각 이상·다음 시작 시각 미만에 적용됩니다.</p>
       <div className="month-grid">{report.months.map((month) => {
         const interpretation = reading?.monthly?.find((item) => item.month === month.month);
-        return <details className="month-card" key={month.month} open>
+        return <details className="month-card" key={month.month}>
           <summary><span>{month.label}</span><strong>{month.ganji}({month.korean}) · {month.stemGod}</strong></summary>
           <p className="method-help">{stamp(month.startAt)} ~ {stamp(month.endAt)} 직전</p>
           {interpretation ? <p>{interpretation.reading}</p> : <>
@@ -98,7 +110,7 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
         const extra = domain.id === "career" ? reading?.career : domain.id === "money" ? reading?.money : domain.id === "partner" ? reading?.relationships : null;
         return <article className="reading-card fortune-domain-card" id={`fortune-domain-${domain.id}`} key={domain.id}>
           <h4>{domain.title}</h4><p>{domain.body}</p>
-          {extra && <p className="domain-extra"><strong>기존 종합 해석</strong><br />{extra}</p>}
+          {extra && <details className="fortune-evidence domain-extra"><summary>AI 종합 해석 더 읽기</summary><p>{extra}</p></details>}
           <p className="domain-interpretation"><strong>사주에서 읽히는 점</strong> {domain.interpretation}</p>
           <details className="fortune-evidence"><summary>이렇게 읽은 사주 근거</summary><ul>{domain.evidence.map((line, index) => <li key={index}>{line}</li>)}</ul></details>
         </article>;

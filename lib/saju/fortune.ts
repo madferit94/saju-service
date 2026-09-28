@@ -27,6 +27,10 @@ const plainThemes: Record<string, string> = {
   편관: "어려운 책임을 맡되 감당할 범위를 정하는 일", 정관: "약속과 평가 기준을 분명히 하는 일",
   편인: "새 방법을 찾아보고 직접 시험하는 일", 정인: "도움을 받아 배우고 기본기를 쌓는 일",
 };
+const hasBatchim = (word: string) => {
+  const last = word.codePointAt(word.length - 1) ?? 0;
+  return last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0;
+};
 
 export function koreanGanji(ganji: string): string {
   return (stemKo[stems.indexOf(ganji[0])] ?? "") + (branchKo[branches.indexOf(ganji[1])] ?? "");
@@ -98,8 +102,8 @@ export function analyzeFlow(chart: SajuChart, ganji: string, label: string, extr
   return {
     label, ganji, korean: koreanGanji(ganji), stemGod, hiddenStems,
     evidence: [
-      label + "의 두 글자 " + ganji + "(" + koreanGanji(ganji) + ") 중 윗글자 " + ganji[0] + "(" + stemKo[stems.indexOf(ganji[0])] + ")를 나를 뜻하는 " + chart.dayMaster.character + "(" + chart.dayMaster.korean + ")와 비교하면 " + stemGod + " 관계입니다. 이는 " + plainThemes[stemGod] + "을 살피는 데 씁니다.",
-      "아랫글자 " + ganji[1] + "(" + branchKo[branches.indexOf(ganji[1])] + ")에는 " + hiddenStems.map((x) => x.stem + "(" + x.korean + "·" + x.god + ")").join(", ") + "가 들어 있습니다. 전통적으로 이 안쪽 글자를 지장간이라 부릅니다.",
+      label + "의 두 글자 " + ganji + "(" + koreanGanji(ganji) + ") 중 윗글자 " + ganji[0] + "(" + stemKo[stems.indexOf(ganji[0])] + ")" + (hasBatchim(stemKo[stems.indexOf(ganji[0])]) ? "을" : "를") + " 나를 뜻하는 " + chart.dayMaster.character + "(" + chart.dayMaster.korean + ")" + (hasBatchim(chart.dayMaster.korean) ? "과" : "와") + " 비교하면 " + stemGod + " 관계입니다. 이는 " + plainThemes[stemGod] + "을 살피는 데 씁니다.",
+      "아랫글자 " + ganji[1] + "(" + branchKo[branches.indexOf(ganji[1])] + ") 속 지장간은 " + hiddenStems.map((x) => x.stem + "(" + x.korean + "·" + x.god + ")").join(", ") + "입니다. 전통적으로 이 안쪽 글자를 지장간이라 부릅니다.",
       ...contacts.map((item) => item.evidence),
     ],
     opportunity: (label === "오늘" ? "오늘은 " : label + "에는 ") + info.opportunity + "을 시도해 볼 만합니다. " +
@@ -119,6 +123,21 @@ const termNames = ["소한", "입춘", "경칩", "청명", "입하", "망종", "
 const instant = (value: { toYmdHms(): string }) => value.toYmdHms().replace(" ", "T") + "+08:00";
 
 export function forLifeStage(flow: FlowAnalysis, age: number): FlowAnalysis {
+  if (age >= 60) {
+    const later: Record<string, { opportunity: string; risk: string; action: string }> = {
+      비견: { opportunity: "오래 지켜 온 생활 기준을 살리고 주변 사람과 서로의 선택을 존중해 볼 수 있습니다.", risk: "자신의 방식만 고집하거나 남의 몫까지 떠맡고 있지 않은지 살펴보세요.", action: "함께할 일과 각자 결정할 일을 나누어 대화해 보세요." },
+      겁재: { opportunity: "동년배나 가까운 사람과 경험을 나누며 혼자 하기 어려운 일을 함께할 수 있습니다.", risk: "친분 때문에 시간이나 비용의 부담이 한쪽으로 쏠리지 않는지 살펴보세요.", action: "함께 쓰는 시간과 비용의 범위를 미리 정해 보세요." },
+      식신: { opportunity: "오래 익힌 기술과 취미를 무리 없는 속도로 이어가거나 전할 수 있습니다.", risk: "즐거운 일이라도 일정이 빽빽해져 휴식이 밀리지 않는지 살펴보세요.", action: "지속할 수 있는 횟수와 쉬는 날을 먼저 정해 보세요." },
+      상관: { opportunity: "쌓은 경험에서 불편한 점을 발견하고 더 편한 방식을 제안할 수 있습니다.", risk: "내 제안이 상대의 생활 방식과 충돌하지 않는지 살펴보세요.", action: "바꾸고 싶은 점을 말할 때 상대가 원하는 방식도 먼저 물어보세요." },
+      편재: { opportunity: "새로운 모임이나 활동을 탐색하며 관계의 폭을 넓혀 볼 수 있습니다.", risk: "여러 제안에 시간과 비용이 흩어지지 않는지 살펴보세요.", action: "새 활동은 이동·비용·휴식 조건을 적어 보고 작은 규모로 시작하세요." },
+      정재: { opportunity: "생활 자원과 반복되는 약속을 정리해 안정적인 리듬을 만들 수 있습니다.", risk: "익숙한 책임을 혼자 계속 맡고 있지 않은지 살펴보세요.", action: "반복 지출과 돌봄·집안일의 분담을 가까운 사람과 점검해 보세요." },
+      편관: { opportunity: "필요한 역할을 맡더라도 경험을 바탕으로 감당할 범위를 정할 수 있습니다.", risk: "부탁을 거절하지 못해 생활 리듬을 해치지 않는지 살펴보세요.", action: "맡을 일의 범위와 도움을 요청할 사람을 먼저 정하세요." },
+      정관: { opportunity: "오래 지켜 온 원칙을 생활과 공동체의 신뢰로 이어갈 수 있습니다.", risk: "규칙을 지키느라 필요한 조정이나 도움 요청을 미루지 않는지 살펴보세요.", action: "지금 생활에 맞지 않는 약속은 범위와 횟수를 다시 상의하세요." },
+      편인: { opportunity: "새로운 배움이나 관심사를 자신의 속도로 탐색할 수 있습니다.", risk: "알아보는 데 시간을 다 쓰고 즐길 기회를 미루지 않는지 살펴보세요.", action: "관심 있는 활동 하나를 짧게 체험하고 맞는지 확인해 보세요." },
+      정인: { opportunity: "배움과 주변의 도움을 생활에 맞게 받아들이며 익숙한 지식을 나눌 수 있습니다.", risk: "도움을 기다리느라 스스로 원하는 선택을 미루지 않는지 살펴보세요.", action: "도움받을 부분과 직접 해볼 부분을 구분해 한 가지씩 시작하세요." },
+    };
+    return { ...flow, ...later[flow.stemGod] };
+  }
   if (age >= 20) return flow;
   return {
     ...flow,

@@ -42,3 +42,9 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] 022-daily-fortune-toggle.md — 오늘의 운세 접기·펼치기 (로컬 검증, 참가자 확인 전)
 
 - [x] 023-plain-fortune-language.md — 오늘·연·월 운세를 쉬운 문장으로 표현 (로컬 검증, 참가자 확인 전)
+
+- [x] 024-independent-life-graph.md — 사주 기반 인생 흐름 그래프와 현재 4계절·개운법 분리 (관계 단서 개수 기준)
+
+- [x] 025-reading-focus-and-clarity.md — 해석의 읽기 순서·근거 연결·문장 품질 개선
+
+- [x] 026-life-peak-graph.md — 단순한 인생 흐름과 전성기 후보 표시 (자동 검증, 화면 확인 전)

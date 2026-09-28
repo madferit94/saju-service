@@ -116,39 +116,28 @@ test("대운 표의 현재 상태 플래그보다 실제 기준 연도로 현재
   assert.equal(result.current?.endYear, 2039);
 });
 
-test("그래프는 실제 현재 지점과 같은 연도를 읽을 수 있게 텍스트·현재 배지·키보드 초점을 제공한다", () => {
+test("현재 4계절은 현재 이유·실천과 대운별 상세를 읽을 수 있다", () => {
   const report = buildLifeSeasons(chart, calculateDaewoon(birth, 0, 2026));
   const html = renderToStaticMarkup(createElement(LifeSeasonsPanel, { report }));
-  assert.match(html, /role="region"[^>]*tabindex="0"/i);
-  assert.match(html, /role="img"[^>]*aria-labelledby=/);
-  assert.match(html, /<desc[^>]*>[^<]*위아래는 운의 좋고 나쁨이 아닌/);
   assert.match(html, /2026년, 사주식 나이/);
-  assert.match(html, /현재/);
+  assert.match(html, /이 계절인 이유/);
+  assert.match(html, /이 시기의 개운법/);
   assert.match(html, /<summary>/, "대운을 키보드로 열 수 있는 기본 summary를 쓴다");
   assert.equal((html.match(/class="life-period /g) ?? []).length, report.periods.length);
-  assert.match(html, /<details(?=[^>]*\bopen="")(?=[^>]*class="life-period [^"]+")[^>]*>/);
-  assert.match(html, /가로축은 실제 대운이 시작하는 연도/);
-  assert.match(html, /행운·성과·수명 점수는 아닙니다/);
+  assert.doesNotMatch(html, /<details(?=[^>]*\bopen="")(?=[^>]*class="life-period [^"]+")[^>]*>/,
+    "현재 계절 요약을 먼저 읽고 대운별 상세는 선택해 엽니다");
+  assert.doesNotMatch(html, /<svg\b|id="life-graph"/, "계절 풀이가 그래프를 포함하면 안 됩니다");
 });
 
 test("인생 그래프와 4계절 풀이가 각각 독립된 목적지와 제목을 가진다", () => {
   const report = buildLifeSeasons(chart, calculateDaewoon(birth, 0, 2026));
   const html = renderToStaticMarkup(createElement(LifeSeasonsPanel, { report }));
-  const graphStart = html.indexOf('<section class="life-graph-panel" id="life-graph"');
-  const seasonsStart = html.indexOf('<section class="life-seasons" id="life-seasons"');
-  assert.ok(graphStart >= 0 && seasonsStart > graphStart, "두 영역은 별도 section이어야 한다");
-  assert.equal((html.match(/id="life-graph"/g) ?? []).length, 1);
+  assert.ok(html.includes('<section class="life-seasons" id="life-seasons"'));
   assert.equal((html.match(/id="life-seasons"/g) ?? []).length, 1);
-  const graph = html.slice(graphStart, seasonsStart);
-  const seasons = html.slice(seasonsStart);
-  assert.match(graph, /<h2 id="life-graph-heading">나의 인생 그래프<\/h2>/);
-  assert.match(graph, /<svg[^>]*role="img"/);
-  assert.match(graph, /href="#life-seasons"/);
-  assert.doesNotMatch(graph, /class="season-current|class="life-periods"/);
-  assert.match(seasons, /<h2 id="life-seasons-title">나의 인생 4계절<\/h2>/);
-  assert.match(seasons, /class="season-current/);
-  assert.match(seasons, /class="life-periods"/);
-  assert.doesNotMatch(seasons, /<svg\b|class="life-graph-wrap"/);
+  assert.match(html, /<h2 id="life-seasons-title">나의 인생 4계절<\/h2>/);
+  assert.match(html, /class="season-current/);
+  assert.match(html, /class="life-periods"/);
+  assert.doesNotMatch(html, /<svg\b|class="life-graph-wrap"|id="life-graph"/);
 });
 
 test("결과 바로가기에서 인생 그래프와 4계절 풀이로 각각 이동한다", () => {
