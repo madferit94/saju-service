@@ -10,6 +10,7 @@ type DailyResponse =
   | { ready: true; context: DailyContext; nextRefreshAt: string };
 
 export default function DailyFortunePanel({ chart, timeline }: { chart: SajuChart; timeline: DaewoonTimeline }) {
+  const [expanded, setExpanded] = useState(false);
   const [daily, setDaily] = useState<DailyResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -54,7 +55,10 @@ export default function DailyFortunePanel({ chart, timeline }: { chart: SajuChar
   const fortune = useMemo(() => daily?.ready ? buildPersonalDailyFortune(chart, timeline, daily.context) : null, [daily, chart, timeline]);
   return <section className="result daily-fortune" id="daily-fortune" aria-labelledby="daily-fortune-title">
     <p className="result-label">매일 오전 9시 · 한국 시간</p>
-    <h2 id="daily-fortune-title">오늘의 운세</h2>
+    <h2 id="daily-fortune-title"><button type="button" className="daily-fortune-toggle" aria-expanded={expanded} aria-controls="daily-fortune-content" onClick={() => setExpanded((current) => !current)}>
+      <span>오늘의 운세</span><span className="daily-fortune-chevron" aria-hidden="true">⌄</span>
+    </button></h2>
+    <div id="daily-fortune-content" hidden={!expanded}>
     {loading && !daily && <p role="status">오늘의 일진을 확인하고 있습니다…</p>}
     {error && <div role="alert"><p>{error}</p><button type="button" className="secondary-button" onClick={() => void load()}>다시 불러오기</button></div>}
     {!error && daily && !daily.ready && <p role="status">{daily.date}의 운세는 오전 9시부터 볼 수 있습니다.</p>}
@@ -69,5 +73,6 @@ export default function DailyFortunePanel({ chart, timeline }: { chart: SajuChar
       <details><summary>이렇게 읽은 근거</summary><p>현재 흐름: {fortune.period}</p><ul>{fortune.evidence.map((line, index) => <li key={index}>{line}</li>)}</ul></details>
       <p className="method-help">전통 명리의 참고 풀이이며 오늘 일어날 사건이나 성과를 확정하지 않습니다. 일진은 양력 날짜의 정오를 기준으로 계산합니다.</p>
     </>}
+    </div>
   </section>;
 }

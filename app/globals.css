@@ -909,6 +909,11 @@ button, a, summary { touch-action: manipulation; }
 .daily-calendar th:last-child, .daily-calendar td:last-child b { color: var(--ink-수); }
 .daily-fortune { margin-top: 24px; }
 .daily-fortune h2 { margin-bottom: 12px; }
+.daily-fortune-toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 48px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.daily-fortune-toggle:hover { color: var(--primary); }
+.daily-fortune-chevron { font-family: Arial, sans-serif; font-size: 30px; line-height: 1; transition: transform 180ms ease; }
+.daily-fortune-toggle[aria-expanded="true"] .daily-fortune-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .daily-fortune-chevron { transition: none; } }
 .daily-fortune-date { font-size: 18px; }
 .daily-fortune-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
 .daily-fortune-grid article { border: 1px solid var(--border); border-radius: 12px; padding: 18px; background: var(--soft); }

@@ -15,8 +15,17 @@ const hidden: Record<string, string[]> = {
 const stemPairs = ["甲己", "乙庚", "丙辛", "丁壬", "戊癸"];
 const branchPairs = ["子丑", "寅亥", "卯戌", "辰酉", "巳申", "午未"];
 const clashes = ["子午", "丑未", "寅申", "卯酉", "辰戌", "巳亥"];
-const roles: Record<string, string> = {
-  년주: "집안·오래된 관계", 월주: "일터·사회적 역할", 일주: "나의 생활·가까운 관계", 시주: "장기 계획·다음 세대",
+const plainAreas: Record<string, string> = {
+  년주: "가족이나 오래된 관계", 월주: "일과 사회생활", 일주: "나의 일상과 가까운 관계", 시주: "앞으로의 계획",
+  올해: "올해의 큰 흐름", "이번 달": "이번 달의 흐름", "현재 대운": "지금 이어지는 긴 흐름",
+  "해당 연도 대운": "그해 이어지는 긴 흐름", "해당 월 세운": "그달이 속한 해의 흐름",
+};
+const plainThemes: Record<string, string> = {
+  비견: "스스로 정할 일과 동료와 나눌 일", 겁재: "함께 쓰는 시간이나 비용의 기준",
+  식신: "배운 것을 작은 결과물로 만드는 일", 상관: "생각을 전하고 기존 방식을 개선하는 일",
+  편재: "새로운 제안의 기회와 비용을 함께 따지는 일", 정재: "반복되는 수입과 지출을 차분히 관리하는 일",
+  편관: "어려운 책임을 맡되 감당할 범위를 정하는 일", 정관: "약속과 평가 기준을 분명히 하는 일",
+  편인: "새 방법을 찾아보고 직접 시험하는 일", 정인: "도움을 받아 배우고 기본기를 쌓는 일",
 };
 
 export function koreanGanji(ganji: string): string {
@@ -57,15 +66,21 @@ function pairExists(pairs: string[], a: string, b: string): boolean {
   return pairs.some((pair) => pair === a + b || pair === b + a);
 }
 
-function interactions(ganji: string, target: { label: string; ganji: string }): string[] {
-  const result: string[] = [];
-  const area = roles[target.label] ? " · " + roles[target.label] : "";
-  const reference = target.label + " " + target.ganji + "(" + koreanGanji(target.ganji) + ")";
-  if (pairExists(stemPairs, ganji[0], target.ganji[0])) result.push(reference + " 사이의 천간합: 관심과 역할이 묶이는 관계" + area);
-  if (pairExists(branchPairs, ganji[1], target.ganji[1])) result.push(reference + " 사이의 지지육합: 연결과 조율을 살피는 관계" + area);
-  if (pairExists(clashes, ganji[1], target.ganji[1])) result.push(reference + " 사이의 지지충: 기존 방식과 새 조건의 마찰을 살피는 관계" + area);
-  if (ganji[1] === target.ganji[1]) result.push(reference + " 사이의 같은 지지 반복: 해당 생활 주제를 다시 점검" + area);
+type Interaction = { kind: "support" | "tension" | "repeat"; area: string; evidence: string };
+
+function interactionDetails(ganji: string, target: { label: string; ganji: string }): Interaction[] {
+  const result: Interaction[] = [];
+  const area = plainAreas[target.label] ?? target.label;
+  const pair = "비교한 두 글자는 " + ganji + "(" + koreanGanji(ganji) + ") 및 " + target.label + " " + target.ganji + "(" + koreanGanji(target.ganji) + ")입니다. ";
+  if (pairExists(stemPairs, ganji[0], target.ganji[0])) result.push({ kind: "support", area, evidence: pair + "윗글자가 짝을 이룹니다(천간합). " + area + "에서 역할을 맞춰 볼 단서입니다." });
+  if (pairExists(branchPairs, ganji[1], target.ganji[1])) result.push({ kind: "support", area, evidence: pair + "아랫글자가 이어집니다(지지육합). " + area + "에서 서로 기대하는 바를 조율해 보세요." });
+  if (pairExists(clashes, ganji[1], target.ganji[1])) result.push({ kind: "tension", area, evidence: pair + "아랫글자가 서로 다른 방향을 가리킵니다(지지충). " + area + "의 기존 방식이 지금도 맞는지 살펴볼 단서입니다." });
+  if (ganji[1] === target.ganji[1]) result.push({ kind: "repeat", area, evidence: pair + "아랫글자가 같습니다(같은 지지 반복). " + area + "의 주제를 다시 살펴볼 단서입니다." });
   return result;
+}
+
+function interactions(ganji: string, target: { label: string; ganji: string }): string[] {
+  return interactionDetails(ganji, target).map((item) => item.evidence);
 }
 
 export function analyzeFlow(chart: SajuChart, ganji: string, label: string, extra: { label: string; ganji: string }[] = []): FlowAnalysis {
@@ -77,23 +92,23 @@ export function analyzeFlow(chart: SajuChart, ganji: string, label: string, extr
   const branchGod = hiddenStems[0]?.god ?? stemGod;
   const branchInfo = meanings[branchGod];
   const contacts = [...chart.pillars.map((p) => ({ label: p.label, ganji: p.text })), ...extra]
-    .flatMap((target) => interactions(ganji, target));
-  const tension = contacts.filter((item) => item.includes("지지충"));
-  const support = contacts.filter((item) => item.includes("합:"));
+    .flatMap((target) => interactionDetails(ganji, target));
+  const tension = contacts.filter((item) => item.kind === "tension");
+  const support = contacts.find((item) => item.kind === "support");
   return {
     label, ganji, korean: koreanGanji(ganji), stemGod, hiddenStems,
     evidence: [
-      ganji + "(" + koreanGanji(ganji) + ")의 천간은 일간 " + chart.dayMaster.character + "(" + chart.dayMaster.korean + ")에 " + stemGod + "(" + info.meaning + ")",
-      "지지 " + ganji[1] + "(" + branchKo[branches.indexOf(ganji[1])] + ")의 지장간: " + hiddenStems.map((x) => x.stem + "(" + x.korean + "·" + x.god + ")").join(", "),
-      ...contacts,
+      label + "의 두 글자 " + ganji + "(" + koreanGanji(ganji) + ") 중 윗글자 " + ganji[0] + "(" + stemKo[stems.indexOf(ganji[0])] + ")를 나를 뜻하는 " + chart.dayMaster.character + "(" + chart.dayMaster.korean + ")와 비교하면 " + stemGod + " 관계입니다. 이는 " + plainThemes[stemGod] + "을 살피는 데 씁니다.",
+      "아랫글자 " + ganji[1] + "(" + branchKo[branches.indexOf(ganji[1])] + ")에는 " + hiddenStems.map((x) => x.stem + "(" + x.korean + "·" + x.god + ")").join(", ") + "가 들어 있습니다. 전통적으로 이 안쪽 글자를 지장간이라 부릅니다.",
+      ...contacts.map((item) => item.evidence),
     ],
-    opportunity: label + "에는 " + info.opportunity + "을 활용점으로 읽습니다. " +
-      (stemGod === branchGod ? "천간과 지지의 주된 십성이 같아 이 주제가 반복됩니다." :
-        "겉으로 드러나는 " + stemGod + "의 작용과 생활 바탕의 " + branchGod + "(" + branchInfo.meaning + ")을 함께 다뤄야 합니다.") +
-      (support.length ? " 확인된 결합은 다음과 같습니다: " + support[0] + ". 협력 조건을 먼저 확인해 보세요." : ""),
-    risk: info.risk + "을 점검할 필요가 있습니다. " +
-      (tension.length ? tension.join(" / ") + ". 합의했던 역할이나 생활 방식이 아직 맞는지 구체적으로 확인하세요." :
-        branchGod !== stemGod ? "동시에 " + branchInfo.risk + "도 살펴보세요." : "이 방식이 잘 맞더라도 맡을 수 있는 범위를 넘기는지 확인하세요."),
+    opportunity: (label === "오늘" ? "오늘은 " : label + "에는 ") + info.opportunity + "을 시도해 볼 만합니다. " +
+      (stemGod === branchGod ? "같은 주제가 두 번 나타나므로 실제 생활에서도 그런지 살펴보세요." :
+        "이와 함께 " + plainThemes[branchGod] + "도 생각해 보세요.") +
+      (support ? " 이 내용은 " + support.area + "에서도 참고할 수 있습니다. 함께할 일이 있다면 서로 맡을 역할을 먼저 확인해 보세요." : ""),
+    risk: info.risk + "이 있는지 살펴보세요. " +
+      (tension.length ? [...new Set(tension.map((item) => "‘" + item.area + "’"))].join(", ") + "에서는 기존에 합의한 방식이 지금도 맞는지 확인해 보세요." :
+        branchGod !== stemGod ? "동시에 " + branchInfo.risk + "도 살펴보세요." : "잘 맞는 방식이라도 맡을 수 있는 범위를 넘기지 않는지 확인해 보세요."),
     action: info.action + (tension.length ? " 변화가 필요하다면 한 번에 전부 바꾸기보다 시험 기간과 되돌릴 기준부터 마련하세요." : ""),
     question: "실제로 " + info.risk + "이 있었나요? 있었던 시기와 없었던 시기의 환경 차이를 기록해 보세요.",
   };
@@ -107,7 +122,7 @@ export function forLifeStage(flow: FlowAnalysis, age: number): FlowAnalysis {
   if (age >= 20) return flow;
   return {
     ...flow,
-    opportunity: flow.label + "에는 " + flow.evidence[0] + ". " + (age <= 7 ? "이 시기에는 보호자와의 관계, 일상의 규칙, 놀이와 적응 환경을 중심으로 읽습니다." : "이 시기에는 학교·배움·또래 관계에서 어떤 역할을 맡았는지와 연결해 읽습니다."),
+    opportunity: flow.label + "에는 " + plainThemes[flow.stemGod] + "을 생활과 비교해 보세요. " + (age <= 7 ? "보호자와의 관계, 일상의 규칙, 놀이와 적응 환경을 중심으로 읽습니다." : "학교·배움·또래 관계에서 어떤 역할을 맡았는지 돌아보세요."),
     risk: age <= 7 ? "어른의 기대를 아이의 성취 기준으로 옮겨오지 않는 것이 중요합니다. 낯선 환경이나 일과가 바뀔 때 적응할 시간과 보호자의 지원을 확인하세요." : "성적과 또래 비교가 커질 때 본인의 학습 속도나 휴식이 밀리는지 살펴보세요. 재성·관성도 이 연령에는 거래나 직장이 아닌 생활 자원과 규칙의 관계로 읽습니다.",
     action: age <= 7 ? "보호자가 생활·놀이의 변화를 기록하고 아이가 편안해하는 환경과 어려워하는 환경을 비교해 보세요." : "잘 맞았던 공부 방식 하나와 부담이 된 비교 상황 하나를 적어, 배우는 방법이나 도움 요청 방식을 조정해 보세요.",
     question: "이 시기의 가정·학교·또래 환경에서 실제로 달라진 것은 무엇이었나요?",
@@ -144,7 +159,7 @@ export function buildFortuneReport(chart: SajuChart, timeline: DaewoonTimeline, 
     stems: hidden[p.branch].map((stem) => ({ stem, korean: stemKo[stems.indexOf(stem)], god: tenGod(chart.dayMaster.character, stem) })),
   }));
   const natalContacts = chart.pillars.flatMap((p, index) => chart.pillars.slice(index + 1)
-    .flatMap((other) => interactions(p.text, { label: other.label, ganji: other.text }).map((line) => p.label + " " + p.text + "(" + p.korean + ") ↔ " + line)));
+    .flatMap((other) => interactions(p.text, { label: other.label, ganji: other.text })));
   const lifetime = [
     { label: "초년 · 배움과 생활 기반", min: 1, max: 19 },
     { label: "청년 · 선택과 독립", min: 20, max: 39 },
