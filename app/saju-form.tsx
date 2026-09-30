@@ -506,6 +506,7 @@ export default function SajuForm() {
       {chart && <ReportNavigation activePage={activePage} onNavigate={navigateTo} />}
       {storageWarning && <p className="storage-warning" role="status">브라우저 저장 공간을 사용할 수 없어 이 결과를 새로고침 후 복원하지 못할 수 있습니다.</p>}
         {pendingInput && activePage === "chart" && isGenerating && <p className="reading-generation-status" role="status">{readingPhase === "summary" ? "사주표를 먼저 보여드립니다. 핵심 풀이를 준비하고 있습니다…" : "평생운·월별 흐름을 담은 상세 풀이를 이어서 만들고 있습니다…"}</p>}
+        {pendingInput && activePage === "chart" && visibleReading && !visibleReading.starReading && !isGenerating && <div className="reading-generation-status"><p>저장된 풀이는 귀인·신살 확장 전 해석입니다.</p><button type="button" onClick={() => void requestGeminiReading()}>귀인·신살을 반영해 다시 풀이</button></div>}
         {summary && !visibleReading && activePage === "chart" && <section className="reading-result" aria-label="먼저 보는 핵심 풀이"><h2>먼저 보는 핵심 풀이</h2><p>{summary.synthesis}</p><h3>올해의 방향</h3><p>{summary.current}</p><h3>지금 할 수 있는 일</h3><p>{summary.action}</p></section>}
         {pendingInput && activePage === "chart" && readingError && <div className="reading-generation-error" role="alert"><p>{readingError}</p><button type="button" disabled={isGenerating} onClick={() => void requestGeminiReading()}>Gemini 해석 다시 시도</button></div>}
         {pendingInput && activePage === "chart" && reading && !visibleReading && !isGenerating && !readingError && <div className="reading-generation-status"><p>저장된 해석은 다른 연도나 이전 방식으로 작성되었습니다.</p><button type="button" onClick={() => void requestGeminiReading()}>선택한 연도로 Gemini 해석 만들기</button></div>}
@@ -526,7 +527,7 @@ export default function SajuForm() {
               <p className="doryeong-one-line-basis">{doryeongOneLine.basis}</p>
               <DoryeongShareCard line={doryeongOneLine.line} />
             </div>}
-            <MansePanel chart={chart} benefactors={benefactors} mode="chart" />
+            <MansePanel chart={chart} benefactors={benefactors} timeline={timeline ?? undefined} fortuneYear={fortuneYear} mode="chart" />
           </section>
         )}
         {chart && activePage === "elements" && <section className="result" aria-label="오행과 십성"><MansePanel chart={chart} benefactors={benefactors} mode="elements" /></section>}
@@ -629,7 +630,7 @@ export default function SajuForm() {
               {([
                 ["삶 전반", visibleReading.overview],
                 ["오행", visibleReading.elements],
-                ["귀인", visibleReading.benefactors],
+                [visibleReading.starReading ? "귀인·신살 종합" : "귀인 · 이전 풀이", visibleReading.starReading || visibleReading.benefactors],
                 ["진로와 일", visibleReading.career],
                 ["관계", visibleReading.relationships],
                 ["돈", visibleReading.money],

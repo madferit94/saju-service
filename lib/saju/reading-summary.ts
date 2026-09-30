@@ -3,7 +3,7 @@ import { validateNoCertainPrediction } from "./reading-quality";
 
 export type ReadingSummary = { synthesis: string; current: string; action: string; evidenceIds: string[] };
 export function summaryFacts(context: GeminiReadingContext) {
-  return [...context.analysis.facts, ...context.fortune.annual.combination.facts.map(f => ({ ...f, id: `annual_${f.id}` }))];
+  return [...context.analysis.facts, ...(context.stars ?? []).filter(s=>s.status==="matched").map(s=>({id:s.id,text:`${s.name}: ${s.interpretation} ${s.action}`})), ...context.fortune.annual.combination.facts.map(f => ({ ...f, id: `annual_${f.id}` }))];
 }
 export function createSummaryPrompt(context: GeminiReadingContext) {
   const first = context.timeline.periods[0];

@@ -24,8 +24,8 @@ export function validateInterpretationBasis(value:unknown, plan:FortuneReport["i
 // These are narrow rejection rules, not a semantic proof that every generated claim is correct.
 export function validateNoCertainPrediction(text:string) {
   for (const sentence of text.split(/[.!?。\n]|하지만|그러나/)) {
-    if (/(단정|보장|확정|예언).{0,8}(않|없|못|아니)|(?:성공|합격|수익|결혼|이혼|질병|사망).{0,18}(아닙니다|보장되지|보장할 수 없)/.test(sentence)) continue;
-    if (/(반드시|무조건|100\s*%).{0,18}(성공|합격|수익|결혼|이혼|병에|사망)|(?:수익|합격|성공)(?:을|이|은)?\s*(?:확실|보장)|\d+\s*세에\s*(?:사망|죽)|(?:암|질병)이\s*(?:생깁니다|발생합니다)/.test(sentence)) throw new Error("확정적인 사건·수익·건강 예언을 조건부 생활 조언으로 바꾸세요.");
+    if (/(단정|보장|확정|예언).{0,8}(않|없|못|아니)|(?:성공|합격|수익|부자|결혼|이혼|질병|사망).{0,18}(아닙니다|보장되지|보장할 수 없|볼 수 없)/.test(sentence)) continue;
+    if (/(반드시|무조건|100\s*%).{0,18}(성공|합격|수익|부자|결혼|이혼|병에|사망)|(?:수익|합격|성공)(?:을|이|은)?\s*(?:확실|보장)|\d+\s*세에\s*(?:사망|죽)|(?:암|질병)이\s*(?:생깁니다|발생합니다)/.test(sentence)) throw new Error("확정적인 사건·수익·건강 예언을 조건부 생활 조언으로 바꾸세요.");
   }
 }
 
@@ -41,11 +41,11 @@ function validateLayerMentions(text:string, expected:Record<string,string>, fiel
 }
 
 export function validateReadingQuality(reading:GeminiSajuReading, context:GeminiReadingContext) {
-  const texts = [reading.synthesis,reading.overview,reading.annual,reading.lifetime,reading.elements,reading.benefactors,reading.career,reading.relationships,reading.money,reading.caution,
+  const texts = [reading.starReading,reading.synthesis,reading.overview,reading.annual,reading.lifetime,reading.elements,reading.benefactors,reading.career,reading.relationships,reading.money,reading.caution,
     ...(reading.monthly??[]).map(p=>p.reading), ...reading.periodReadings.flatMap(p=>[p.theme,p.strengths,p.cautions,p.advice,p.reflection])].filter((s):s is string=>typeof s === "string");
   for (const text of texts) validateNoCertainPrediction(text);
   if (context.age < 20) {
-    const currentTexts = [reading.synthesis,reading.annual,reading.career,reading.money,reading.relationships,...(reading.monthly??[]).map(m=>m.reading)];
+    const currentTexts = [reading.starReading,reading.synthesis,reading.annual,reading.career,reading.money,reading.relationships,...(reading.monthly??[]).map(m=>m.reading)];
     for (const text of currentTexts) {
       for (const sentence of (text??"").split(/[.!?。\n]/)) {
         for (const mention of sentence.matchAll(/직장|취업|이직|투자|계약|수익|월급|수입/g)) {

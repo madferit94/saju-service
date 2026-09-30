@@ -22,6 +22,7 @@ export type Consultation = {version:1;analysisVersion:1;readingStyleVersion?:2|3
 export function consultationFacts(context:GeminiReadingContext) {
   return [
     ...context.analysis.facts,
+    ...(context.stars ?? []).filter(s=>s.status==="matched").map(s=>({id:s.id,text:`${s.name}: ${s.interpretation} ${s.opportunity} ${s.caution} 실천: ${s.action}`})),
     ...context.pillars.map((p,i)=>({id:`pillar_${i}`,text:`${p.label} ${p.text}(${p.korean}) · 천간 ${p.stemElement}, 지지 ${p.branchElement}`})),
     ...context.fortune.natal.contacts.map((text,i)=>({id:`contact_${i}`,text})),
     ...context.benefactors.map((b,i)=>({id:`benefactor_${i}`,text:`${b.name}: ${b.basis}. 해당 자리: ${b.matchedPillars.join("·") || "없음"}`})),
@@ -132,6 +133,7 @@ export function consultationPrompt(context:GeminiReadingContext,id:ChapterId,lif
     "쉬운 설명의 예: ‘식상이 재성을 생하므로 재물로 유통됩니다’ 대신 ‘익힌 기술을 실제 결과물로 내놓을 때 수입으로 이어질 가능성을 살펴봅니다. 다만 맡은 일이 늘어도 보상이 그대로라면 이 장점이 부담이 될 수 있어요.’처럼 풉니다. 예시 문장을 모든 사주에 복사하지 말고 이번 계산의 서로 다른 근거로 설명하세요. 반대 조건도 쉬운 말로 쓰고, 마지막 실천은 언제·누구와·무엇을 확인할지 보이게 합니다.",
     "쉬운 상담의 최종 작성 기준: summary는 전문 용어와 한자 없이 생활의 특징과 조건을 바로 말하세요. '살펴봅니다/다룹니다/비교합니다/확인합니다'처럼 장의 내용을 소개하면 실패입니다. 예: '익숙한 일을 더 낫게 바꾸는 데 관심이 갈 수 있어요. 다만 생활비를 안정적으로 마련해야 할 때는 새 시도를 작게 시작하는 편이 맞는지 생각해 보세요.' 각 절 text는 400~650자, 최소280자이고 2~3문단입니다. 첫 문장과 첫 문단은 사주 용어 없이 생활 이야기만 씁니다. 두 번째 문단에서 실제 근거 두 개를 쉬운 뜻과 함께 짚으세요. 기둥의 모든 한자를 나열하지 말고 필요한 이름만 쓰세요. 계산 설명이 생활 설명보다 길어지지 않게 합니다. 예시 문구는 해당 사주의 근거가 맞을 때만 참고하고 그대로 복사하지 마세요.",
     ...(id==="lifetime" && lifeSeasons ? ["이번 사람의 대운별 인생 4계절 계산 자료:\n"+JSON.stringify({method:lifeSeasons.method,current:lifeSeasons.current,periods:lifeSeasons.periods.map(p=>({startYear:p.startYear,endYear:p.endYear,startAge:p.startAge,endAge:p.endAge,ganji:p.ganji,korean:p.korean,season:p.seasonLabel,secondarySeason:p.secondarySeason,stemGod:p.stemGod,branchGod:p.branchGod,reason:p.reason}))}),`평생 운 장에서는 현재 ${lifeSeasons.current?.currentYear??lifeSeasons.periods[0]?.startYear}년과 현재 계절 ${lifeSeasons.current?.seasonLabel??"대운 시작 전"}을 본문에 정확히 쓰세요. 첫째 또는 둘째 절에서 현재 계절이 이 사람에게 뜻하는 생활 상황과 부담을 설명하고, 앞뒤 시기의 계절 이름도 직접 써서 무엇이 달라지는지 비교하세요. 계절은 고정 나이 구분이나 길흉 등급이 아니며, 반복되거나 건너뛸 수 있습니다. 실제 사건은 이용자에게 확인하고 그래프와 다른 계절을 임의로 만들지 마세요.`] : []),
+    "종합 판단은 월령·뿌리·강약·격국/조후의 보류 조건과 합충, 대운·세운·월운을 먼저 연결한 뒤 실제 일치한 귀인·신살을 보조적으로 반영하세요. stars의 원국 matches와 시기별 flowMatches를 구별하고 표지 하나로 사건이나 성격을 단정하지 마세요.",
     "검증된 계산 자료:\n"+JSON.stringify(context),
     "인용 가능한 근거 목록:\n"+JSON.stringify(consultationFacts(context)),
   ].join("\n\n");

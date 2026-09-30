@@ -2,7 +2,7 @@ import type { SajuInput } from "./chart";
 import type { GeminiSajuReading } from "./gemini-reading";
 import type { ReadingSummary } from "./reading-summary";
 
-export const READING_PROMPT_VERSION = "contextual-rules-3-quality-1";
+export const READING_PROMPT_VERSION = "contextual-rules-3-quality-1-stars-1";
 export function readingSessionKey(input: SajuInput, gender: 0 | 1, year: number) {
   return JSON.stringify([READING_PROMPT_VERSION, input, gender, year]);
 }

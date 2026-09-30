@@ -1,3 +1,4 @@
+import { calculateStars, type SajuStar } from "./stars";
 import type { Benefactor } from "./benefactors";
 import type { SajuChart } from "./chart";
 import type { DaewoonTimeline } from "./daewoon";
@@ -16,6 +17,8 @@ export type PeriodReading = {
 };
 
 export type GeminiSajuReading = {
+  starReading?: string;
+  starEvidenceIds?: string[];
   interpretationBasis?: InterpretationBasis;
   analysisVersion?: 1;
   readingVersion?: 2;
@@ -35,6 +38,7 @@ export type GeminiSajuReading = {
 };
 
 export type GeminiReadingContext = {
+  stars: SajuStar[];
   age: number;
   analysis: DeepAnalysis;
   fortune: FortuneReport;
@@ -62,10 +66,16 @@ export function createGeminiReadingContext(
   benefactors: Benefactor[],
   fortuneYear = timeline.currentYear,
 ): GeminiReadingContext {
+  const fortune = buildFortuneReport(chart, timeline, fortuneYear);
+  const current = timeline.periods.find(p => p.startYear <= fortuneYear && p.endYear >= fortuneYear);
   return {
+    stars: calculateStars(chart, [
+      ...(current?.ganji ? [{label:`${fortuneYear}년의 대운`,ganji:current.ganji}] : []),
+      {label:`${fortuneYear}년 세운`,ganji:fortune.annual.ganji},
+    ]),
     age: fortuneYear - timeline.periods[0].startYear + timeline.periods[0].startAge,
     analysis: analyzeNatal(chart),
-    fortune: buildFortuneReport(chart, timeline, fortuneYear),
+    fortune,
     pillars: chart.pillars.map(({ label, text, korean, stemElement, branchElement }) => ({
       label,
       text,
@@ -138,6 +148,9 @@ export function validateGeminiSajuReading(value: unknown, expectedPeriodIndexes:
       throw new Error("평생·세운·월운 종합 해석이 빠졌거나 계산 연도와 다릅니다.");
     }
   }
+  if (reading.starReading !== undefined || reading.starEvidenceIds !== undefined) {
+    if (!boundedText(reading.starReading, 2400) || !Array.isArray(reading.starEvidenceIds) || reading.starEvidenceIds.length > 10 || reading.starEvidenceIds.some(id => typeof id !== "string" || !/^star_[a-z]+$/.test(id))) throw new Error("귀인·신살 해석 형식이 올바르지 않습니다.");
+  }
   const summaryFields: (keyof Omit<GeminiSajuReading, "periodReadings">)[] = [
     "overview", "elements", "benefactors", "career", "relationships", "money", "caution",
   ];
@@ -165,6 +178,8 @@ export function validateGeminiSajuReading(value: unknown, expectedPeriodIndexes:
 export const geminiReadingResponseSchema = {
   type: "object",
   properties: {
+    starReading: { type: "string" },
+    starEvidenceIds: { type: "array", items: { type: "string" }, maxItems: 10 },
     interpretationBasis: interpretationBasisSchema,
     readingVersion: { type: "integer", enum: [2] },
     fortuneYear: { type: "integer" },
@@ -199,13 +214,15 @@ export const geminiReadingResponseSchema = {
     money: { type: "string" },
     caution: { type: "string" },
   },
-  required: ["interpretationBasis", "readingVersion", "fortuneYear", "synthesis", "lifetime", "annual", "monthly", "overview", "elements", "benefactors", "periodReadings", "career", "relationships", "money", "caution"],
+  required: ["starReading", "starEvidenceIds", "interpretationBasis", "readingVersion", "fortuneYear", "synthesis", "lifetime", "annual", "monthly", "overview", "elements", "benefactors", "periodReadings", "career", "relationships", "money", "caution"],
   additionalProperties: false,
 } as const;
 
 export function createGeminiReadingPrompt(context: GeminiReadingContext): string {
   return [
     SAJU_READING_PLAIN_FOUNDATION,
+    "<종합 판단 순서>월령·일간·지장간의 뿌리와 강약 민감도, 격국 후보·조후, 합충, 대운→세운→월운을 먼저 연결하고 마지막에 stars의 귀인·신살을 보조적으로 읽으세요. 격국과 용신의 보류 조건을 유지하세요. 좋은 표지와 부담 신호가 함께 있으면 어느 조건에서 달라지는지 설명하고 개수를 길흉 점수로 합산하지 마세요. synthesis에도 실제 일치한 표지 중 핵심 1~2개가 원국·운의 판단을 어떻게 보완하는지 연결하세요.</종합 판단 순서>",
+    "<귀인·신살>starReading은 원국에 status=matched인 표지를 연결한 종합 풀이입니다. 목록 나열보다 공통 주제와 상반 조건, 생활 실천을 설명하세요. starEvidenceIds에는 원국 matched 표지 ID를 모두 한 번씩 넣으세요. starReading에는 absent/not-applicable 표지 이름과 운에서만 일치한 표지를 언급하지 마세요. flowMatches는 원국 보유와 다르므로 annual에서만 시기를 명시해 보조 설명하세요. 일치 항목이 없으면 ID는 빈 배열로 두고 원국·운 중심으로 읽는다고 설명하세요. 귀인은 자동 보호, 도화는 부정한 관계, 양인은 사고, 화개는 고독으로 단정하지 마세요.</귀인·신살>",
     `<현재 연령>선택한 해의 사주식 나이는 ${context.age}세입니다. ${context.age < 20 ? "종합·올해·월별·직업·돈·관계 항목은 학교·배움·또래·용돈·생활 준비로만 설명하세요. 성인의 수입·수익·투자·직장·취업·계약을 현재의 일처럼 쓰지 마세요. 평생운과 대운별 해석의 미래 성인 구간은 각 구간 나이에 맞게 구별하세요." : "현재 연령에 맞는 생활 장면을 사용하고 각 대운의 시작·끝 나이도 구별하세요."}</현재 연령>`,
     "<공통 해석 계획>fortune.interpretationPlan을 종합·연운·직업·관계·돈 풀이의 공통 기준으로 삼으세요. 분야마다 다른 성공 방향을 만들지 말고 opportunity/risk/action을 해당 분야의 상황으로 풀어 쓰세요. 각 시기의 hierarchy는 대운·세운·월운이 이어지거나 달라지는 지점입니다. combination.rule은 원국 조건에 따라 선택한 생활 해석입니다. interpretationBasis.synthesis와 interpretationBasis.annual에 각각 계획의 ruleId와 evidenceIds(필수 ID 모두 포함, facts에 있는 것만)를 넣으세요. 검증용 필드를 본문에 노출하지 마세요.</공통 해석 계획>",
     "<표현 예시>좋은 방식: '새로운 일을 맡을 때는 익히는 시간과 실제로 해 보는 시간을 나누는 편이 좋겠습니다. 준비만 길어지면 결과를 확인할 기회를 놓칠 수 있습니다.' 근거가 실제로 있을 때만 뒤에 '태어난 달의 배움에 관한 관계와 이번 시기의 표현에 관한 관계를 함께 읽은 풀이입니다.'처럼 덧붙이세요. 나쁜 방식: '편인과 식신이 작용하므로 길합니다.' 예시는 말투를 보여 줄 뿐이며 계산 자료에 없는 관계를 복사하지 마세요.</표현 예시>",

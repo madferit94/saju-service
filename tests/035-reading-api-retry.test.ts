@@ -20,10 +20,12 @@ const plain = "맡은 일을 정리할 때 방향을 잡기 쉬울 수 있습니
 function validReading() {
   const indexes = calculateDaewoon(input, 0).periods.map((period) => period.index);
   const chart = calculate(input);
-  const plan = createGeminiReadingContext(chart, calculateDaewoon(input, 0), calculateBenefactors(chart), 2026).fortune.interpretationPlan;
+  const context = createGeminiReadingContext(chart, calculateDaewoon(input, 0), calculateBenefactors(chart), 2026);
+  const plan = context.fortune.interpretationPlan;
   const selection = { ruleId: plan.ruleId, evidenceIds: ["annual_flow_parts", "annual_natal_season"] };
   return {
     readingVersion: 2, fortuneYear: 2026,
+    starReading: plain, starEvidenceIds: context.stars.filter(s => s.status === "matched").map(s => s.id),
     interpretationBasis: { synthesis: selection, annual: selection },
     synthesis: plain,
     lifetime: "삶의 앞부분에는 배우는 환경을 살펴보세요. 이후에는 경험을 어디에 쓸지 생각해 볼 수 있습니다. 초년, 청년, 중년, 후반의 계산된 흐름을 각각 비교합니다.",
@@ -88,4 +90,19 @@ test("근거 선택이 빠진 새 전체 응답은 한 번 수정하고 계속 �
   assert.equal(response.status, 502);
   assert.equal((await response.json()).error.code, "invalid_response");
   assert.equal(rejected.calls.length, 2);
+});
+
+test("원국에 없는 신살 ID 응답은 한 번 수정하고 반복 실패를 성공으로 바꾸지 않는다", async () => {
+  const good = validReading();
+  const bad = {...good, starEvidenceIds:[...good.starEvidenceIds,"star_invented"]};
+  const recovered = apiHarness([bad,good]);
+  const success = await recovered.request();
+  assert.equal(success.status,200);
+  assert.equal(recovered.calls.length,2);
+  assert.deepEqual((await success.json()).reading.starEvidenceIds,good.starEvidenceIds);
+  const rejected = apiHarness([bad,bad]);
+  const failure = await rejected.request();
+  assert.equal(failure.status,502);
+  assert.equal(rejected.calls.length,2);
+  assert.equal((await failure.json()).error.code,"invalid_response");
 });

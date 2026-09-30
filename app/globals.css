@@ -1279,3 +1279,20 @@ summary { font-size: 16px; }
 @media (prefers-reduced-motion: reduce) {
   .page-header::after { animation: none; opacity: 0; }
 }
+
+/* Clickable star explanations share one inline detail region. */
+.manse-stars { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+.manse-stars button { min-height:44px; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:transparent; color:inherit; font:inherit; cursor:pointer; }
+button.star-chip { min-height:64px; text-align:left; color:inherit; font:inherit; cursor:pointer; background:transparent; }
+button.star-chip.star-matched { background:rgba(120,98,67,.07); }
+button.star-chip[aria-pressed="true"] { outline:2px solid currentColor; outline-offset:2px; }
+.star-chip:focus-visible,.manse-stars button:focus-visible,.star-detail button:focus-visible { outline:3px solid #756044; outline-offset:3px; }
+.star-detail { margin-top:24px; padding:24px; border:1px solid var(--border); border-radius:16px; scroll-margin:100px; }
+.star-detail header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.star-detail h4 { font-size:1.4rem; margin:4px 0 12px; }
+.star-detail h5 { font-size:1rem; margin:20px 0 8px; }
+.star-detail p { line-height:1.8; overflow-wrap:anywhere; }
+.star-detail header button { min-height:44px; min-width:56px; cursor:pointer; border:1px solid var(--border); border-radius:8px; background:transparent; color:inherit; }
+.star-rule { font-size:.85rem; opacity:.8; }
+.star-guidance { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+@media(max-width:640px) { .star-guidance { grid-template-columns:1fr; gap:0; } .star-detail { padding:18px; } .star-chips { gap:10px; } }

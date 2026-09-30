@@ -1,3 +1,4 @@
+import { validateStarReading } from "../../../lib/saju/stars";
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { calculate, InputError, validateInput, type SajuInput } from "../../../lib/saju/chart";
@@ -103,6 +104,7 @@ export async function POST(request: Request) {
         validateReadingGrounding(candidate, context);
         validateInterpretationBasis(candidate.interpretationBasis, context.fortune.interpretationPlan);
         validateReadingQuality(candidate, context);
+        validateStarReading(candidate, context.stars);
         reading = { ...candidate, analysisVersion: 1 as const };
         break;
       } catch (error) {
