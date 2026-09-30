@@ -4,6 +4,7 @@ import type { DaewoonTimeline } from "./daewoon";
 import { buildFortuneReport, koreanGanji, type FortuneReport } from "./fortune";
 import { analyzeNatal, type DeepAnalysis } from "./deep-analysis";
 import { SAJU_READING_PLAIN_FOUNDATION } from "./reading-prompt";
+import { interpretationBasisSchema, type InterpretationBasis } from "./reading-quality";
 
 export type PeriodReading = {
   index: number;
@@ -15,6 +16,7 @@ export type PeriodReading = {
 };
 
 export type GeminiSajuReading = {
+  interpretationBasis?: InterpretationBasis;
   analysisVersion?: 1;
   readingVersion?: 2;
   fortuneYear?: number;
@@ -33,6 +35,7 @@ export type GeminiSajuReading = {
 };
 
 export type GeminiReadingContext = {
+  age: number;
   analysis: DeepAnalysis;
   fortune: FortuneReport;
   pillars: Array<Pick<SajuChart["pillars"][number], "label" | "text" | "korean" | "stemElement" | "branchElement">>;
@@ -60,6 +63,7 @@ export function createGeminiReadingContext(
   fortuneYear = timeline.currentYear,
 ): GeminiReadingContext {
   return {
+    age: fortuneYear - timeline.periods[0].startYear + timeline.periods[0].startAge,
     analysis: analyzeNatal(chart),
     fortune: buildFortuneReport(chart, timeline, fortuneYear),
     pillars: chart.pillars.map(({ label, text, korean, stemElement, branchElement }) => ({
@@ -161,6 +165,7 @@ export function validateGeminiSajuReading(value: unknown, expectedPeriodIndexes:
 export const geminiReadingResponseSchema = {
   type: "object",
   properties: {
+    interpretationBasis: interpretationBasisSchema,
     readingVersion: { type: "integer", enum: [2] },
     fortuneYear: { type: "integer" },
     synthesis: { type: "string" },
@@ -194,13 +199,15 @@ export const geminiReadingResponseSchema = {
     money: { type: "string" },
     caution: { type: "string" },
   },
-  required: ["readingVersion", "fortuneYear", "synthesis", "lifetime", "annual", "monthly", "overview", "elements", "benefactors", "periodReadings", "career", "relationships", "money", "caution"],
+  required: ["interpretationBasis", "readingVersion", "fortuneYear", "synthesis", "lifetime", "annual", "monthly", "overview", "elements", "benefactors", "periodReadings", "career", "relationships", "money", "caution"],
   additionalProperties: false,
 } as const;
 
 export function createGeminiReadingPrompt(context: GeminiReadingContext): string {
   return [
     SAJU_READING_PLAIN_FOUNDATION,
+    `<현재 연령>선택한 해의 사주식 나이는 ${context.age}세입니다. ${context.age < 20 ? "종합·올해·월별·직업·돈·관계 항목은 학교·배움·또래·용돈·생활 준비로만 설명하세요. 성인의 수입·수익·투자·직장·취업·계약을 현재의 일처럼 쓰지 마세요. 평생운과 대운별 해석의 미래 성인 구간은 각 구간 나이에 맞게 구별하세요." : "현재 연령에 맞는 생활 장면을 사용하고 각 대운의 시작·끝 나이도 구별하세요."}</현재 연령>`,
+    "<공통 해석 계획>fortune.interpretationPlan을 종합·연운·직업·관계·돈 풀이의 공통 기준으로 삼으세요. 분야마다 다른 성공 방향을 만들지 말고 opportunity/risk/action을 해당 분야의 상황으로 풀어 쓰세요. 각 시기의 hierarchy는 대운·세운·월운이 이어지거나 달라지는 지점입니다. combination.rule은 원국 조건에 따라 선택한 생활 해석입니다. interpretationBasis.synthesis와 interpretationBasis.annual에 각각 계획의 ruleId와 evidenceIds(필수 ID 모두 포함, facts에 있는 것만)를 넣으세요. 검증용 필드를 본문에 노출하지 마세요.</공통 해석 계획>",
     "<표현 예시>좋은 방식: '새로운 일을 맡을 때는 익히는 시간과 실제로 해 보는 시간을 나누는 편이 좋겠습니다. 준비만 길어지면 결과를 확인할 기회를 놓칠 수 있습니다.' 근거가 실제로 있을 때만 뒤에 '태어난 달의 배움에 관한 관계와 이번 시기의 표현에 관한 관계를 함께 읽은 풀이입니다.'처럼 덧붙이세요. 나쁜 방식: '편인과 식신이 작용하므로 길합니다.' 예시는 말투를 보여 줄 뿐이며 계산 자료에 없는 관계를 복사하지 마세요.</표현 예시>",
     "<정확한 시기>lifetime에는 '초년', '청년', '중년', '후반' 네 구간을 모두 쓰고 fortune.lifetime.periods의 실제 연도·나이·대운에 맞추세요. 대운 시작 전에는 없는 간지를 만들지 마세요. annual은 fortune.year의 세운과 해당 대운을 구분하세요. monthly는 fortune.months의 1~12월을 순서대로 쓰고, 각 월의 ganji=월운, annualGanji=세운, daewoonGanji=대운입니다. 각 값과 한글 독음은 제공 자료와 일치해야 합니다. 1월 입춘 전에는 전년도 세운이 적용될 수 있으므로 월별 제공 자료를 우선하세요.</정확한 시기>",
     "<조합 해석>각 시기의 combination에는 원국의 월령·뿌리·운의 지장간·투간·조후를 함께 본 결과가 있습니다. 같은 십성의 일반론을 반복하지 말고 opportunity/risk/reason에서 이 원국과 시기에 달라지는 핵심을 선택하세요. facts는 내부 근거이며 가중치 수치를 본문에 나열하지 마세요.</조합 해석>",
@@ -235,11 +242,18 @@ export function validateReadingGrounding(reading: GeminiSajuReading, context: Ge
   }
 }
 
-export function createGeminiResponseSchema(expectedIndexes: number[]) {
+export function createGeminiResponseSchema(expectedIndexes: number[], plan?: GeminiReadingContext["fortune"]["interpretationPlan"]) {
   return {
     ...geminiReadingResponseSchema,
     properties: {
       ...geminiReadingResponseSchema.properties,
+      interpretationBasis: plan ? {
+        ...interpretationBasisSchema,
+        properties: Object.fromEntries(["synthesis","annual"].map(field => [field, {
+          type:"object",additionalProperties:false,required:["ruleId","evidenceIds"],
+          properties:{ruleId:{type:"string",enum:[plan.ruleId]},evidenceIds:{type:"array",minItems:2,maxItems:2,items:{type:"string",enum:plan.evidenceIds}}},
+        }])),
+      } : interpretationBasisSchema,
       periodReadings: {
         ...geminiReadingResponseSchema.properties.periodReadings,
         minItems: expectedIndexes.length,

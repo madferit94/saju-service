@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
 import { calculateDaewoon } from "../lib/saju/daewoon";
-import type { SajuInput } from "../lib/saju/chart";
+import { calculate, type SajuInput } from "../lib/saju/chart";
+import { calculateBenefactors } from "../lib/saju/benefactors";
+import { createGeminiReadingContext } from "../lib/saju/gemini-reading";
 
 const input: SajuInput = {
   date: "1994-12-01", time: "08:37", calendar: "solar", topic: "general",
@@ -17,8 +19,12 @@ const plain = "맡은 일을 정리할 때 방향을 잡기 쉬울 수 있습니
 
 function validReading() {
   const indexes = calculateDaewoon(input, 0).periods.map((period) => period.index);
+  const chart = calculate(input);
+  const plan = createGeminiReadingContext(chart, calculateDaewoon(input, 0), calculateBenefactors(chart), 2026).fortune.interpretationPlan;
+  const selection = { ruleId: plan.ruleId, evidenceIds: ["annual_flow_parts", "annual_natal_season"] };
   return {
     readingVersion: 2, fortuneYear: 2026,
+    interpretationBasis: { synthesis: selection, annual: selection },
     synthesis: plain,
     lifetime: "삶의 앞부분에는 배우는 환경을 살펴보세요. 이후에는 경험을 어디에 쓸지 생각해 볼 수 있습니다. 초년, 청년, 중년, 후반의 계산된 흐름을 각각 비교합니다.",
     annual: plain,
@@ -68,4 +74,18 @@ test("첫 문장에 명리 용어가 있으면 Gemini 종합 해석을 한 번 �
   assert.equal(failed.status, 502);
   assert.equal(rejected.calls.length, 2);
   assert.equal((await failed.json()).error.code, "invalid_response");
+});
+
+test("근거 선택이 빠진 새 전체 응답은 한 번 수정하고 계속 잘못되면 실패한다", async () => {
+  const good = validReading();
+  const { interpretationBasis: omitted, ...missing } = good;
+  const recovered = apiHarness([missing, good]);
+  assert.equal((await recovered.request()).status, 200);
+  assert.equal(recovered.calls.length, 2);
+  const invalid = { ...good, interpretationBasis: { ...good.interpretationBasis, annual: { ruleId: "invented-rule", evidenceIds: ["annual_flow_parts", "annual_natal_season"] } } };
+  const rejected = apiHarness([invalid, invalid]);
+  const response = await rejected.request();
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error.code, "invalid_response");
+  assert.equal(rejected.calls.length, 2);
 });

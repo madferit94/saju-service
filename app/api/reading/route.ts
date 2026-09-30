@@ -4,6 +4,7 @@ import { calculate, InputError, validateInput, type SajuInput } from "../../../l
 import { calculateDaewoon, type YunGender } from "../../../lib/saju/daewoon";
 import { calculateBenefactors } from "../../../lib/saju/benefactors";
 import { createSummaryPrompt, createSummarySchema, summaryFacts, validateReadingSummary } from "../../../lib/saju/reading-summary";
+import { validateInterpretationBasis, validateReadingQuality } from "../../../lib/saju/reading-quality";
 import {
   createGeminiReadingContext,
   createGeminiReadingPrompt,
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
         contents: createGeminiReadingPrompt(context) + correction,
         config: {
           responseMimeType: "application/json",
-          responseJsonSchema: createGeminiResponseSchema(timeline.periods.map((p) => p.index)),
+          responseJsonSchema: createGeminiResponseSchema(timeline.periods.map((p) => p.index), context.fortune.interpretationPlan),
           maxOutputTokens: 16384,
           abortSignal: request.signal,
         },
@@ -100,6 +101,8 @@ export async function POST(request: Request) {
         const parsed: unknown = JSON.parse(response.text || "{}");
         const candidate = validateGeminiSajuReading(parsed, timeline.periods.map((period) => period.index), fortuneYear);
         validateReadingGrounding(candidate, context);
+        validateInterpretationBasis(candidate.interpretationBasis, context.fortune.interpretationPlan);
+        validateReadingQuality(candidate, context);
         reading = { ...candidate, analysisVersion: 1 as const };
         break;
       } catch (error) {

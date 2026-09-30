@@ -1,5 +1,7 @@
 # Status
 
+- [x] 042-contextual-reading-quality.md — 조합별 생활 해석·시기 연결·AI 내용 검증 (독립 262개 테스트·빌드·성인/미성년 실응답 검증)
+
 - [x] 039-combined-flow-reading.md — 원국과 시기의 조합 해석 (독립 테스트·로컬 실응답 검증)
 - [x] 040-combined-life-flow.md — 균형 변화 그래프와 현재 계절 보강 (독립 테스트·로컬 화면 검증)
 - [x] 041-progressive-ai-reading.md — AI 핵심 요약 선표시·부분 재시도·세션 재사용 (전체 246개 테스트·빌드·로컬 성공/실패/재시도 검증)

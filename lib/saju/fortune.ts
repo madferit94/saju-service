@@ -1,6 +1,7 @@
 import { tenGod } from "./ten-gods";
 export { tenGod } from "./ten-gods";
 import { combineFlow } from "./flow-combination";
+import { describeFlowLayers } from "./flow-layers";
 import lunar from "lunar-javascript";
 import type { SajuChart } from "./chart";
 import type { DaewoonTimeline } from "./daewoon";
@@ -57,6 +58,7 @@ export type FlowAnalysis = {
   label: string; ganji: string; korean: string; stemGod: string;
   hiddenStems: { stem: string; korean: string; god: string }[];
   combination: ReturnType<typeof combineFlow>; evidence: string[]; opportunity: string; risk: string; action: string; question: string;
+  hierarchy: ReturnType<typeof describeFlowLayers>;
 };
 
 function pairExists(pairs: string[], a: string, b: string): boolean {
@@ -82,6 +84,7 @@ function interactions(ganji: string, target: { label: string; ganji: string }): 
 
 export function analyzeFlow(chart: SajuChart, ganji: string, label: string, extra: { label: string; ganji: string }[] = []): FlowAnalysis {
   const combination = combineFlow(chart, ganji);
+  const hierarchy = describeFlowLayers(chart, ganji, extra, label);
   const stemGod = tenGod(chart.dayMaster.character, ganji[0]);
   const info = meanings[stemGod];
   const hiddenStems = (hidden[ganji[1]] ?? []).map((stem) => ({
@@ -94,14 +97,14 @@ export function analyzeFlow(chart: SajuChart, ganji: string, label: string, extr
   const tension = contacts.filter((item) => item.kind === "tension");
   const support = contacts.find((item) => item.kind === "support");
   return {
-    label, ganji, korean: koreanGanji(ganji), stemGod, hiddenStems, combination,
+    label, ganji, korean: koreanGanji(ganji), stemGod, hiddenStems, combination, hierarchy,
     evidence: [
       label + "의 두 글자 " + ganji + "(" + koreanGanji(ganji) + ") 중 윗글자 " + ganji[0] + "(" + stemKo[stems.indexOf(ganji[0])] + ")" + (hasBatchim(stemKo[stems.indexOf(ganji[0])]) ? "을" : "를") + " 나를 뜻하는 " + chart.dayMaster.character + "(" + chart.dayMaster.korean + ")" + (hasBatchim(chart.dayMaster.korean) ? "과" : "와") + " 비교하면 " + stemGod + " 관계입니다. 이는 " + plainThemes[stemGod] + "을 살피는 데 씁니다.",
       "아랫글자 " + ganji[1] + "(" + branchKo[branches.indexOf(ganji[1])] + ") 속 지장간은 " + hiddenStems.map((x) => x.stem + "(" + x.korean + "·" + x.god + ")").join(", ") + "입니다. 전통적으로 이 안쪽 글자를 지장간이라 부릅니다.",
       ...contacts.map((item) => item.evidence),
       ...combination.facts.map(fact => fact.text),
     ],
-    opportunity: combination.opportunity + " " + (label === "오늘" ? "오늘은 " : label + "에는 ") + info.opportunity + "을 시도해 볼 만합니다. " +
+    opportunity: combination.opportunity + " " + (extra.length ? hierarchy.narrative : (label === "오늘" ? "오늘은 " : label + "에는 ") + info.opportunity + "을 시도해 볼 만합니다. ") +
       (stemGod === branchGod ? "같은 주제가 두 번 나타나므로 실제 생활에서도 그런지 살펴보세요." :
         "이와 함께 " + plainThemes[branchGod] + "도 생각해 보세요.") +
       (support ? " 이 내용은 " + support.area + "에서도 참고할 수 있습니다. 함께할 일이 있다면 서로 맡을 역할을 먼저 확인해 보세요." : ""),
@@ -195,10 +198,16 @@ export function buildFortuneReport(chart: SajuChart, timeline: DaewoonTimeline, 
   });
   const dominant = annual.stemGod;
   const natalMonthGod = natalHidden[1].stems[0].god;
+  const interpretationPlan = {
+    ruleId: annual.combination.rule.id,
+    evidenceIds: ["annual_natal_season", "annual_flow_parts"],
+    facts: [...annual.combination.facts.map(f => ({...f,id:`annual_${f.id}`})), {id:"timeline_layers",text:annual.hierarchy.layers.map(p=>`${p.label}: ${p.ganji}, ${p.theme}`).join("; ")}],
+    opportunity:annual.opportunity, risk:annual.risk, action:annual.action, hierarchy:annual.hierarchy,
+  };
   return {
     version: 2 as const, year,
     natal: { dayMaster: chart.dayMaster, hiddenStems: natalHidden, contacts: natalContacts, monthGod: natalMonthGod },
-    annual, months, lifetime,
+    annual, months, lifetime, interpretationPlan,
     synthesis: "타고난 월지 " + chart.pillars[1].branch + "(" + chart.pillars[1].korean[1] + ")의 주된 지장간은 " + natalMonthGod +
       "(" + meanings[natalMonthGod].meaning + ")으로 읽습니다. " + year + "년에는 " + annual.ganji + "(" + annual.korean + ")의 " +
       dominant + "(" + meanings[dominant].meaning + ")이 겹칩니다. " +
