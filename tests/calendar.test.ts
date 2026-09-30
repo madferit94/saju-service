@@ -27,6 +27,37 @@ test("윤달 여부 모름은 같은 달에 윤달이 있을 때 두 후보를 �
   assert.throws(() => resolveSolarDate(base), /윤달 여부를 확인할 수 없습니다/);
 });
 
+test("윤달을 명시하면 윤달 후보 하나만 반환하고 그 날짜로 원국과 대운을 계산한다", () => {
+  const leapInput: SajuInput = { ...base, leapMonth: "leap" };
+  const candidates = getCalendarCandidates(leapInput);
+  assert.deepEqual(candidates.map(({ label, solarDate, input }) => [label, solarDate, input.leapMonth]), [
+    ["윤달", "2020-05-23", "leap"],
+  ]);
+  assert.equal(resolveSolarDate(leapInput), "2020-05-23");
+  const solarInput: SajuInput = { ...base, date: "2020-05-23", calendar: "solar", leapMonth: undefined };
+  assert.deepEqual(calculate(leapInput).pillars, calculate(solarInput).pillars);
+  assert.deepEqual(calculateDaewoon(leapInput, 0).periods, calculateDaewoon(solarInput, 0).periods);
+});
+
+test("평달 29일·윤달 30일이면 모름에서도 유효한 윤달 후보만 남긴다", () => {
+  const input: SajuInput = { ...base, date: "2017-06-30" };
+  const candidates = getCalendarCandidates(input);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].input.leapMonth, "leap");
+  assert.equal(candidates[0].solarDate, "2017-08-21");
+  assert.equal(resolveSolarDate({ ...input, leapMonth: "leap" }), "2017-08-21");
+  assert.throws(() => getCalendarCandidates({ ...input, leapMonth: "regular" }), /평달에는 입력한 날짜가 없습니다/);
+});
+
+test("윤달 29일·평달 30일이면 모름에서도 유효한 평달 후보만 남긴다", () => {
+  const input: SajuInput = { ...base, date: "1990-05-30" };
+  const candidates = getCalendarCandidates(input);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].input.leapMonth, "regular");
+  assert.equal(candidates[0].solarDate, "1990-06-22");
+  assert.throws(() => getCalendarCandidates({ ...input, leapMonth: "leap" }), /윤달에는 입력한 날짜가 없습니다/);
+});
+
 test("해당 연도에 그 달 윤달이 없으면 평달만 사용한다고 알린다", () => {
   const candidates = getCalendarCandidates({ ...base, date: "2020-05-01" });
   assert.equal(candidates.length, 1);

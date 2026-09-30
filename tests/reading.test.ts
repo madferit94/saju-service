@@ -134,28 +134,28 @@ test("기둥별 해석은 네 간지의 독음·천간/지지 오행·일간 관
       branch: "酉", branchKorean: "유", branchElement: "금",
       stemRelation: "성과와 관리에 눈이 갈 수 있으나 통제하려는 마음이 부담이 될 수 있습니다",
       branchRelation: "비슷한 방식의 힘을 보태거나 경쟁이 심해질 수 있습니다",
-      role: "전통적으로 초년의 바탕과 집안·바깥 환경을 돌아보는 자리",
+      role: "어린 시절의 환경과 오래 이어지는 관계를 읽는 자리",
     },
     {
       label: "월주", hanja: "戊子", korean: "무자", stem: "戊", stemKorean: "무", stemElement: "토",
       branch: "子", branchKorean: "자", branchElement: "수",
       stemRelation: "도움과 배움이 들어올 수 있으나 의존이 커지지 않게 살펴야 합니다",
       branchRelation: "표현과 결과물을 내기 좋지만 에너지 소모를 함께 살펴야 합니다",
-      role: "성장 환경과 사회에서 맡는 역할, 계절 기운을 살펴보는 자리",
+      role: "배우고 사회에 나가는 방식의 바탕을 읽는 자리",
     },
     {
       label: "일주", hanja: "辛巳", korean: "신사", stem: "辛", stemKorean: "신", stemElement: "금",
       branch: "巳", branchKorean: "사", branchElement: "화",
       stemRelation: "비슷한 방식의 힘을 보태거나 경쟁이 심해질 수 있습니다",
       branchRelation: "규칙과 책임이 성장을 밀어줄 수 있으나 압박도 커질 수 있습니다",
-      role: "나 자신을 중심에 두고 가까운 관계를 함께 돌아보는 자리",
+      role: "나의 기준과 가까운 관계를 함께 읽는 자리",
     },
     {
       label: "시주", hanja: "壬辰", korean: "임진", stem: "壬", stemKorean: "임", stemElement: "수",
       branch: "辰", branchKorean: "진", branchElement: "토",
       stemRelation: "표현과 결과물을 내기 좋지만 에너지 소모를 함께 살펴야 합니다",
       branchRelation: "도움과 배움이 들어올 수 있으나 의존이 커지지 않게 살펴야 합니다",
-      role: "앞으로 기르고 싶은 일과 장기 계획을 비춰보는 자리",
+      role: "앞으로 키울 일과 긴 계획을 읽는 자리",
     },
   ];
 
@@ -175,6 +175,6 @@ test("기둥별 해석은 네 간지의 독음·천간/지지 오행·일간 관
     assert.ok(actual.interpretation.includes(item.stemRelation));
     assert.ok(actual.interpretation.includes(`지지 ${item.branch}(${item.branchKorean}, ${item.branchElement})`));
     assert.ok(actual.interpretation.includes(item.branchRelation));
-    assert.match(actual.interpretation, /실제 성격이나 사건을 확정하는 표가 아니라/);
+    assert.doesNotMatch(actual.interpretation, /실제 성격이나 사건을 확정하는 표가 아니라|확률|공인 점수|서비스 비교 지표/);
   }
 });

@@ -1,3 +1,6 @@
+import { tenGod } from "./ten-gods";
+export { tenGod } from "./ten-gods";
+import { combineFlow } from "./flow-combination";
 import lunar from "lunar-javascript";
 import type { SajuChart } from "./chart";
 import type { DaewoonTimeline } from "./daewoon";
@@ -36,16 +39,6 @@ export function koreanGanji(ganji: string): string {
   return (stemKo[stems.indexOf(ganji[0])] ?? "") + (branchKo[branches.indexOf(ganji[1])] ?? "");
 }
 
-export function tenGod(dayStem: string, otherStem: string): string {
-  const a = stems.indexOf(dayStem), b = stems.indexOf(otherStem);
-  if (a < 0 || b < 0) throw new Error("십성 계산에 사용할 천간이 올바르지 않습니다.");
-  const same = a % 2 === b % 2;
-  const distance = (Math.floor(b / 2) - Math.floor(a / 2) + 5) % 5;
-  return [
-    same ? "비견" : "겁재", same ? "식신" : "상관", same ? "편재" : "정재",
-    same ? "편관" : "정관", same ? "편인" : "정인",
-  ][distance];
-}
 
 const meanings: Record<string, { meaning: string; opportunity: string; risk: string; action: string }> = {
   비견: { meaning: "자기 주도와 동료·경쟁", opportunity: "혼자 책임질 수 있는 영역을 확보하고 동료와 전문성을 나누는 방식", risk: "같은 역할을 두 사람이 맡으면서 결정권과 보상 기준을 두고 부딪히는 상황", action: "공동으로 하는 일은 결정권자·기여 범위·보상 기준을 시작 전에 문서로 합의하세요." },
@@ -63,7 +56,7 @@ const meanings: Record<string, { meaning: string; opportunity: string; risk: str
 export type FlowAnalysis = {
   label: string; ganji: string; korean: string; stemGod: string;
   hiddenStems: { stem: string; korean: string; god: string }[];
-  evidence: string[]; opportunity: string; risk: string; action: string; question: string;
+  combination: ReturnType<typeof combineFlow>; evidence: string[]; opportunity: string; risk: string; action: string; question: string;
 };
 
 function pairExists(pairs: string[], a: string, b: string): boolean {
@@ -88,6 +81,7 @@ function interactions(ganji: string, target: { label: string; ganji: string }): 
 }
 
 export function analyzeFlow(chart: SajuChart, ganji: string, label: string, extra: { label: string; ganji: string }[] = []): FlowAnalysis {
+  const combination = combineFlow(chart, ganji);
   const stemGod = tenGod(chart.dayMaster.character, ganji[0]);
   const info = meanings[stemGod];
   const hiddenStems = (hidden[ganji[1]] ?? []).map((stem) => ({
@@ -100,20 +94,21 @@ export function analyzeFlow(chart: SajuChart, ganji: string, label: string, extr
   const tension = contacts.filter((item) => item.kind === "tension");
   const support = contacts.find((item) => item.kind === "support");
   return {
-    label, ganji, korean: koreanGanji(ganji), stemGod, hiddenStems,
+    label, ganji, korean: koreanGanji(ganji), stemGod, hiddenStems, combination,
     evidence: [
       label + "의 두 글자 " + ganji + "(" + koreanGanji(ganji) + ") 중 윗글자 " + ganji[0] + "(" + stemKo[stems.indexOf(ganji[0])] + ")" + (hasBatchim(stemKo[stems.indexOf(ganji[0])]) ? "을" : "를") + " 나를 뜻하는 " + chart.dayMaster.character + "(" + chart.dayMaster.korean + ")" + (hasBatchim(chart.dayMaster.korean) ? "과" : "와") + " 비교하면 " + stemGod + " 관계입니다. 이는 " + plainThemes[stemGod] + "을 살피는 데 씁니다.",
       "아랫글자 " + ganji[1] + "(" + branchKo[branches.indexOf(ganji[1])] + ") 속 지장간은 " + hiddenStems.map((x) => x.stem + "(" + x.korean + "·" + x.god + ")").join(", ") + "입니다. 전통적으로 이 안쪽 글자를 지장간이라 부릅니다.",
       ...contacts.map((item) => item.evidence),
+      ...combination.facts.map(fact => fact.text),
     ],
-    opportunity: (label === "오늘" ? "오늘은 " : label + "에는 ") + info.opportunity + "을 시도해 볼 만합니다. " +
+    opportunity: combination.opportunity + " " + (label === "오늘" ? "오늘은 " : label + "에는 ") + info.opportunity + "을 시도해 볼 만합니다. " +
       (stemGod === branchGod ? "같은 주제가 두 번 나타나므로 실제 생활에서도 그런지 살펴보세요." :
         "이와 함께 " + plainThemes[branchGod] + "도 생각해 보세요.") +
       (support ? " 이 내용은 " + support.area + "에서도 참고할 수 있습니다. 함께할 일이 있다면 서로 맡을 역할을 먼저 확인해 보세요." : ""),
-    risk: info.risk + "이 있는지 살펴보세요. " +
+    risk: combination.risk + " " + info.risk + "이 있는지 살펴보세요. " +
       (tension.length ? [...new Set(tension.map((item) => "‘" + item.area + "’"))].join(", ") + "에서는 기존에 합의한 방식이 지금도 맞는지 확인해 보세요." :
         branchGod !== stemGod ? "동시에 " + branchInfo.risk + "도 살펴보세요." : "잘 맞는 방식이라도 맡을 수 있는 범위를 넘기지 않는지 확인해 보세요."),
-    action: info.action + (tension.length ? " 변화가 필요하다면 한 번에 전부 바꾸기보다 시험 기간과 되돌릴 기준부터 마련하세요." : ""),
+    action: combination.action + " " + info.action + (tension.length ? " 변화가 필요하다면 한 번에 전부 바꾸기보다 시험 기간과 되돌릴 기준부터 마련하세요." : ""),
     question: "실제로 " + info.risk + "이 있었나요? 있었던 시기와 없었던 시기의 환경 차이를 기록해 보세요.",
   };
 }

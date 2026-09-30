@@ -53,7 +53,7 @@ export default function LifeGraphPanel({ report, noteStorageKey }: { report: Lif
   const last = periods.at(-1)!.endYear + 1;
   const left = 44, right = 716, top = 62, bottom = 218;
   const x = (year: number) => left + (year - first) / (last - first) * (right - left);
-  const y = (level: number) => bottom - level / 2 * (bottom - top);
+  const y = (level: number) => bottom - (level + report.scale) / (2 * report.scale) * (bottom - top);
   const centers = periods.map((period) => ({ period, cx: x((period.startYear + period.endYear + 1) / 2) }));
   const line = centers.map(({ period, cx }, index) => `${index ? "L" : "M"} ${cx.toFixed(1)} ${y(period.level).toFixed(1)}`).join(" ");
   const currentX = report.current ? x(report.currentYear + .5) : null;
@@ -65,19 +65,18 @@ export default function LifeGraphPanel({ report, noteStorageKey }: { report: Lif
   return <section className="life-graph-panel" id="life-graph" aria-labelledby="life-graph-heading">
     <p className="result-label">삶 전반의 확장 흐름</p>
     <h2 id="life-graph-heading">나의 인생 그래프</h2>
-    <p className="life-seasons-lead">대운이 바뀔 때마다 사주에서 살필 흐름을 한 줄로 그렸습니다. 높은 위치가 성취나 행복을 보장하지는 않습니다.</p>
+    <p className="life-seasons-lead">대운이 바뀔 때마다 사주에서 두드러지는 흐름을 한 줄로 그렸습니다.</p>
     <div className="life-graph-highlight">
-      <strong>{peakMode ? firstFeatured ? "기운을 펼치기 좋은 시기" : "완만하게 이어지는 흐름" : "변화가 두드러지는 시기"}</strong>
-      <p>{peakMode
-        ? firstFeatured ? `${featuredText}${restCount ? ` 외 ${restCount}구간` : ""}에는 사주에서 균형을 돕는 오행이 대운과 가장 많이 맞물립니다. 자신의 강점을 쓰고 활동 범위를 넓혀 볼 흐름입니다.` : "계산한 대운에서는 균형을 돕는 오행이 특별히 겹치는 시기가 없습니다. 각 시기의 십성 주제를 따라 삶의 방향을 살펴보세요."
-        : firstFeatured ? `${featuredText}${restCount ? ` 외 ${restCount}구간` : ""}에는 태어난 사주와 10년 운에서 서로 맞물리거나 부딪치고, 같은 글자가 되풀이되는 모습이 가장 많습니다. 관계와 역할, 익숙한 방식을 새로 맞추는 흐름으로 읽습니다.` : "태어난 사주와 10년 운의 맞물림과 부딪침이 비교적 고르게 나타납니다. 각 시기의 주제를 따라 변화를 살펴보세요."}</p>
+      <strong>{firstFeatured ? "기운을 펼치기 좋은 시기" : peakMode ? "완만하게 이어지는 흐름" : "시기마다 달라지는 균형"}</strong>
+      <p>{firstFeatured ? `${featuredText}${restCount ? ` 외 ${restCount}구간도 비슷한 흐름입니다` : ""}. 원국의 치우침을 덜어 주는 대운으로, 활동 범위를 넓힐 조건을 살핍니다.` : peakMode ? "한 시기를 두드러진 전성기로 정하기보다, 각 대운에서 살릴 역할과 준비할 조건을 읽어 보세요." : "계절과 기운의 배치가 복합적입니다. 시기별로 도움받을 조건과 새로 조율할 역할을 함께 살펴보세요."}</p>
+      {firstFeatured && <p>{firstFeatured.explanation}</p>}
     </div>
     {report.current && <p className="life-graph-now">지금 · {report.current.startAge}–{report.current.endAge}세 {report.current.korean} 대운</p>}
     <div className="life-graph-wrap" role="region" aria-label="대운별 인생 흐름 그래프" tabIndex={0}>
       <svg viewBox="0 0 760 278" className="life-graph" role="img" aria-labelledby="life-graph-title life-graph-description">
         <title id="life-graph-title">사주 기반 대운 흐름과 현재 위치</title>
-        <desc id="life-graph-description">{peakMode ? "각 점은 사주의 균형을 돕는 오행과 대운 두 글자가 맞물리는 정도입니다. 높은 점은 활동 흐름이 두드러지는 시기입니다." : "각 점은 원국과 대운 사이의 합·충·반복이 나타나는 정도입니다. 높은 점은 관계와 역할의 변화가 두드러지는 시기입니다."} 점선은 현재 연도 위치를 나타냅니다.</desc>
-        <line x1={left} x2={right} y1={bottom} y2={bottom} className="graph-guide"/>
+        <desc id="life-graph-description">각 점은 원국에 대운의 천간과 모든 지장간을 더했을 때 기운의 치우침을 보완하는 정도입니다. 같은 높이는 비슷한 조건을 뜻합니다. 점선은 현재 연도 위치입니다.</desc>
+        <line x1={left} x2={right} y1={y(0)} y2={y(0)} className="graph-guide"/>
         <path d={line} className="life-path graph-flow"/>
         {centers.map(({ period, cx }, index) => <g key={period.index}>
           <circle cx={cx} cy={y(period.level)} r={shownFeatured.includes(period) ? 8 : 5} className={shownFeatured.includes(period) ? "graph-peak-point" : "graph-flow-point"}/>
@@ -86,7 +85,8 @@ export default function LifeGraphPanel({ report, noteStorageKey }: { report: Lif
         {currentX !== null && <g><line x1={currentX} x2={currentX} y1="42" y2="222" className="current-line"/><text x={Math.min(690, Math.max(70, currentX))} y="31" textAnchor="middle" className="current-graph-label">지금</text></g>}
       </svg>
     </div>
-    <p className="method-help">{peakMode ? "그래프의 높이는 사주의 균형을 돕는 오행과 대운이 맞물리는 정도입니다. 실제 성취를 뜻하는 점수는 아닙니다." : "그래프의 높이는 원국과 대운의 합·충·반복이 드러나는 정도입니다. 좋은 일이나 나쁜 일이 일어날 확률은 아닙니다."}</p>
+    <p className="method-help">위쪽은 균형을 보완하는 흐름, 아래쪽은 힘을 쓸 범위를 조정하는 흐름입니다.</p>
+    {report.current && <p className="life-reading-lead">{report.current.explanation}</p>}
     <details className="life-note-disclosure">
       <summary>내 경험 한 줄 적기{Object.keys(notes).length ? ` · ${Object.keys(notes).length}개 기록` : ""}</summary>
       <p className="method-help">지나온 시기에는 실제 경험을, 앞으로의 시기에는 생각이나 계획을 한 줄 적어 위 그래프의 풀이와 비교해 보세요. 메모는 이 브라우저에만 저장되며 계정이나 AI로 보내지지 않습니다.</p>

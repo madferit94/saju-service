@@ -10,7 +10,6 @@ const stemElements: Record<string, Element> = {
 
 export function buildLifeGraph(chart: SajuChart, timeline: DaewoonTimeline) {
   const analysis = analyzeNatal(chart);
-  const hasBalancingCandidates = analysis.useful.status === "조건부 후보";
   const favorable = new Set(analysis.useful.candidates.map((candidate) => candidate.element));
   const periods = timeline.periods.filter((period) => period.ganji).map((period) => {
     const flow = analyzeFlow(chart, period.ganji, `${period.korean} 대운`);
@@ -30,7 +29,10 @@ export function buildLifeGraph(chart: SajuChart, timeline: DaewoonTimeline) {
       endYear: period.endYear,
       startAge: period.startAge,
       endAge: period.endAge,
-      level: hasBalancingCandidates ? matchingElements.length : Math.min(2, activityCount),
+      level: flow.combination.balanceGain,
+      explanation: flow.combination.reason,
+      opportunity: flow.opportunity,
+      action: flow.action,
       matchingElements,
       stemElement,
       branchElement,
@@ -42,19 +44,20 @@ export function buildLifeGraph(chart: SajuChart, timeline: DaewoonTimeline) {
     };
   });
   const highest = Math.max(0, ...periods.map((period) => period.level));
-  const featured = highest > 0 ? periods.filter((period) => period.level === highest) : [];
+  const comparable = !analysis.strength.sensitive && !analysis.strength.exceptional;
+  const spread = periods.length ? highest - Math.min(...periods.map(p => p.level)) : 0;
+  const featured = comparable && highest > .5 && spread > .5 ? periods.filter(period => highest - period.level <= .5) : [];
   const current = periods.find((period) => period.startYear <= timeline.currentYear && timeline.currentYear <= period.endYear) ?? null;
   return {
     periods,
     current,
     featured,
     currentYear: timeline.currentYear,
-    mode: hasBalancingCandidates ? "peak-candidate" as const : "change" as const,
+    mode: comparable ? "peak-candidate" as const : "balanced-context" as const,
+    scale: Math.max(5, ...periods.map(p => Math.abs(p.level))),
     favorable: [...favorable],
     strengthReason: analysis.useful.reason,
-    method: hasBalancingCandidates
-      ? "원국의 강약 비교가 안정적일 때 제시한 조건부 도움 오행과 각 대운의 앞글자·아랫글자 중심 글자 오행을 비교합니다. 두 글자 중 맞는 개수 0~2를 상대적 높이로만 표시합니다. 높은 구간도 전성기 후보일 뿐 실제 성취나 좋은 사건을 보장하지 않습니다. 합·충의 개수는 높이에 더하지 않으며, 기간 사이의 선은 시간순 연결을 돕는 표시입니다."
-      : "원국의 강약·도움 오행 분석이 보류되어 전성기를 판정하지 않습니다. 대신 각 대운과 원국 네 기둥의 천간합·지지육합·지지충·같은 지지 반복이 드러나는 정도를 0~2단계로 압축했습니다. 높은 구간은 변화 단서가 많다는 뜻이며 좋은 운이나 나쁜 운, 사건의 확률이 아닙니다. 기간 사이의 선은 시간순 연결을 돕는 표시입니다.",
+    method: "월령을 반영한 원국 기여에 대운 천간 10과 모든 지장간 15를 더해 생조 비중이 50%에서 떨어진 거리가 얼마나 줄어드는지 비교합니다. 조후·뿌리·투간은 설명에 함께 제시합니다. 합충 개수는 점수에 더하지 않습니다. 서비스의 상대 비교 규칙이며 사건 확률이나 전통의 공인 점수가 아닙니다. 민감하거나 특수한 원국, 모든 구간이 비슷한 경우에는 전성기를 선정하지 않습니다.",
   };
 }
 

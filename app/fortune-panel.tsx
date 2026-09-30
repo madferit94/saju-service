@@ -21,8 +21,9 @@ function topicParticle(word: string): string {
   return last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 !== 0 ? "은" : "는";
 }
 
-export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" }: {
+export default function FortunePanel({ report, reading, timezone = "Asia/Seoul", mode = "all", onDomains }: {
   report: FortuneReport; reading: GeminiSajuReading | null; timezone?: string;
+  mode?: "all" | "flow" | "domains"; onDomains?: () => void;
 }) {
   const lifetimeGods = [...new Set(report.lifetime.flatMap((stage) => stage.periods.flatMap((period) =>
     period.ganji ? [period.stemGod, ...(period.hiddenStems?.map((item) => item.god) ?? [])] : [],
@@ -30,7 +31,8 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
   const stamp = (value: string) => new Intl.DateTimeFormat("ko-KR", {
     timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).format(new Date(value));
-  return <section className="fortune-panel" aria-labelledby="fortune-title">
+  return <section className="fortune-panel" aria-labelledby={mode === "domains" ? "fortune-domains-title" : "fortune-title"}>
+    {mode !== "domains" && <>
     <p className="result-label">평생의 바탕에서 한 달의 선택까지</p>
     <h2 id="fortune-title">나의 평생 운과 지금의 흐름</h2>
     <p className="fortune-synthesis">{reading?.synthesis ?? report.synthesis}</p>
@@ -39,16 +41,16 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
       <p>원국의 특징에 {report.annual.daewoon.endsWith("대운 시작 전") ? `${report.annual.daewoon}의 생활 환경` : `${report.annual.daewoon} 대운의 주제`}를 함께 놓고, {report.year}년 {report.annual.korean} 세운을 더해 읽습니다. 현재 선택한 연도의 활용점과 부담을 먼저 살핀 뒤 생활 주제로 이어서 읽어 보세요.</p>
       <p><b>활용점</b> {report.annual.opportunity}</p>
       <p><b>부담이 커질 조건</b> {report.annual.risk}</p>
-      <a href="#fortune-domains">관심 있는 생활 주제 고르기</a>
+      {onDomains ? <button type="button" className="text-link-button" onClick={onDomains}>관심 있는 생활 주제 고르기</button> : <a href="#fortune-domains">관심 있는 생활 주제 고르기</a>}
     </div>
-    <nav className="fortune-section-nav" aria-label="운세 주제 바로가기"><a href="#fortune-lifetime">평생운</a><a href="#fortune-annual">{report.year}년 · 월별운</a><a href="#fortune-domains">생활 주제별 운</a></nav>
+    <nav className="fortune-section-nav" aria-label="운세 주제 바로가기"><a href="#fortune-lifetime">평생운</a><a href="#fortune-annual">{report.year}년 · 월별운</a>{mode === "all" && <a href="#fortune-domains">생활 주제별 운</a>}{onDomains && <button type="button" className="text-link-button" onClick={onDomains}>생활 주제별 운</button>}</nav>
     <section className="fortune-content" id="fortune-lifetime" aria-labelledby="fortune-lifetime-title">
       <h3 id="fortune-lifetime-title">인생 전체를 이어서 읽기</h3>
       <p className="method-help">사주식 나이로 초년부터 후반까지, 실제 대운이 달라지는 구간을 묶었습니다.</p>
       <div className="lifetime-guide">
         <h4>읽기 전에: 풀이에 나오는 용어의 뜻</h4>
         <p><strong>대운</strong>은 약 10년씩 바뀌는 해석 구간입니다. <strong>일간</strong>은 태어난 날의 윗글자로, 다른 글자와의 관계를 비교할 때 기준이 됩니다. 그 관계의 이름이 <strong>십성</strong>입니다. <strong>지장간</strong>은 대운 아랫글자 속에 들어 있다고 보는 글자입니다. <strong>합</strong>은 두 글자가 묶이는 관계, <strong>충</strong>은 서로 부딪히는 관계를 뜻합니다.</p>
-        <p>아래 십성은 이번 풀이에 실제로 등장한 이름입니다. 사람의 성격이나 미래 사건을 하나의 이름으로 확정하는 뜻은 아닙니다.</p>
+        <p>아래는 이번 풀이에 실제로 등장한 십성의 뜻입니다.</p>
         <dl className="lifetime-glossary">{lifetimeGods.map((god) => <div key={god}><dt>{god}</dt><dd>{godExplanations[god]}</dd></div>)}</dl>
       </div>
       <h4 className="lifetime-order-title">내 사주에서 이렇게 읽은 이유</h4>
@@ -92,8 +94,10 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
         </details>;
       })}</div>
     </section>
+    </>}
+    {mode !== "flow" && <>
     <section className="fortune-content" id="fortune-domains" aria-labelledby="fortune-domains-title">
-      <h3 id="fortune-domains-title">생활 주제별 운</h3>
+      {mode === "domains" ? <h2 id="fortune-domains-title">생활 주제별 운</h2> : <h3 id="fortune-domains-title">생활 주제별 운</h3>}
       <p className="method-help">각 주제는 원국의 자리와 십성, {report.year}년 세운을 함께 읽었습니다.</p>
       <nav className="fortune-domain-nav" aria-label="생활 운 항목 바로가기">{report.domains.map((domain) => <a key={domain.id} href={`#fortune-domain-${domain.id}`}>{domain.title}</a>)}</nav>
       <div className="reading-grid fortune-domain-grid">{report.domains.map((domain) => {
@@ -105,6 +109,6 @@ export default function FortunePanel({ report, reading, timezone = "Asia/Seoul" 
         </article>;
       })}</div>
     </section>
-    <p className="note">전통 명리의 해석을 실제 경험·현재 여건과 비교해 읽어 주세요. 미래의 사건이나 수익, 수명을 보장하는 결과는 아닙니다.</p>
+    </>}
   </section>;
 }

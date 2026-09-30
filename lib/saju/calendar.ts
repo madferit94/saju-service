@@ -47,26 +47,28 @@ export function getCalendarCandidates<T extends CalendarInput>(input: T): Calend
   const leapMonth = input.leapMonth ?? "regular";
   if (!["regular", "leap", "unknown"].includes(leapMonth)) throw new Error("평달·윤달·모름 중에서 선택해주세요.");
 
-  let regularSolarDate: string;
-  try {
-    regularSolarDate = Lunar.fromYmd(year, month, day).getSolar().toYmd();
-  } catch {
-    throw new Error("해당 음력 평달에는 입력한 날짜가 없습니다.");
-  }
-
   const leapMonthOfYear = LunarYear.fromYear(year).getLeapMonth();
   const hasLeapCandidate = leapMonthOfYear === month;
   if (leapMonth === "leap" && !hasLeapCandidate) {
     throw new Error(`음력 ${year}년에는 ${month}월 윤달이 없습니다. 평달 또는 모름을 선택해주세요.`);
   }
 
-  const regularCandidate: CalendarCandidate<T> = {
-    input: { ...input, calendar: "lunar", leapMonth: "regular" },
-    solarDate: regularSolarDate,
-    label: leapMonth === "unknown" && !hasLeapCandidate ? "평달 (해당 연·월에 윤달 없음)" : "평달",
-  };
+  let regularCandidate: CalendarCandidate<T> | null = null;
+  if (leapMonth !== "leap") {
+    try {
+      const regularSolarDate = Lunar.fromYmd(year, month, day).getSolar().toYmd();
+      regularCandidate = {
+        input: { ...input, calendar: "lunar", leapMonth: "regular" },
+        solarDate: regularSolarDate,
+        label: leapMonth === "unknown" && !hasLeapCandidate ? "평달 (해당 연·월에 윤달 없음)" : "평달",
+      };
+    } catch {
+      if (leapMonth === "regular" || !hasLeapCandidate) throw new Error("해당 음력 평달에는 입력한 날짜가 없습니다.");
+    }
+  }
   if (leapMonth === "regular" || !hasLeapCandidate) {
-    const solarYear = Number(regularSolarDate.slice(0, 4));
+    if (!regularCandidate) throw new Error("해당 음력 평달에는 입력한 날짜가 없습니다.");
+    const solarYear = Number(regularCandidate.solarDate.slice(0, 4));
     if (solarYear < 1990) throw new Error("양력 1990년 1월 1일 이후의 출생 날짜를 지원합니다.");
     return [regularCandidate];
   }
@@ -76,11 +78,12 @@ export function getCalendarCandidates<T extends CalendarInput>(input: T): Calend
     leapSolarDate = Lunar.fromYmd(year, -month, day).getSolar().toYmd();
   } catch {
     if (leapMonth === "leap") throw new Error("해당 음력 윤달에는 입력한 날짜가 없습니다.");
+    if (!regularCandidate) throw new Error("입력한 날짜는 평달과 윤달에 모두 없습니다.");
     regularCandidate.label = "평달 (해당 날짜의 윤달 없음)";
     return [regularCandidate];
   }
   const leapYear = Number(leapSolarDate.slice(0, 4));
-  const candidates: CalendarCandidate<T>[] = [regularCandidate];
+  const candidates: CalendarCandidate<T>[] = regularCandidate ? [regularCandidate] : [];
   if (leapYear >= 1990) {
     candidates.push({
       input: { ...input, calendar: "lunar", leapMonth: "leap" },
@@ -90,6 +93,7 @@ export function getCalendarCandidates<T extends CalendarInput>(input: T): Calend
   } else if (leapMonth === "leap") {
     throw new Error("양력 1990년 1월 1일 이후의 출생 날짜를 지원합니다.");
   }
+  if (!candidates.length) throw new Error("양력 1990년 1월 1일 이후의 출생 날짜를 지원합니다.");
   return candidates;
 }
 
