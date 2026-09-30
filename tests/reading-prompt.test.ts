@@ -5,7 +5,7 @@ import { calculateDaewoon } from "../lib/saju/daewoon";
 import { calculateBenefactors } from "../lib/saju/benefactors";
 import { createGeminiReadingContext, createGeminiReadingPrompt } from "../lib/saju/gemini-reading";
 import { consultationPrompt } from "../lib/saju/consultation";
-import { SAJU_READING_FOUNDATION } from "../lib/saju/reading-prompt";
+import { SAJU_READING_FOUNDATION, SAJU_READING_PLAIN_FOUNDATION } from "../lib/saju/reading-prompt";
 
 const virtualInput: SajuInput = {
   date: "1994-06-14",
@@ -59,8 +59,8 @@ test("공유 기본 프롬프트는 CO-STAR 여섯 항목과 개인별 해석 �
   }
 });
 
-test("종합 해석과 장별 상담은 같은 기본 기준을 포함하고 출생 입력·질문은 보내지 않는다", () => {
-  const outputPrompts = prompts();
+test("장별 상담은 기존 깊이 기준을 유지하고 두 해석 모두 출생 입력·질문은 보내지 않는다", () => {
+  const [overallPrompt, consultation] = prompts();
   const required = [
     "[맥락 Context]",
     "[목표 Objective]",
@@ -82,10 +82,11 @@ test("종합 해석과 장별 상담은 같은 기본 기준을 포함하고 출
     "각 필드마다 같은 생활 장면과 조언을 반복하지 마세요",
   ];
 
-  for (const prompt of outputPrompts) {
-    for (const phrase of required) {
-      assert.ok(prompt.includes(phrase), `생성 프롬프트에 '${phrase}'가 있어야 함`);
-    }
+  for (const phrase of required) {
+    assert.ok(consultation.includes(phrase), `장별 상담 프롬프트에 '${phrase}'가 있어야 함`);
+  }
+
+  for (const prompt of [overallPrompt, consultation]) {
     for (const privateValue of [
       virtualInput.date,
       virtualInput.time,
@@ -99,22 +100,16 @@ test("종합 해석과 장별 상담은 같은 기본 기준을 포함하고 출
     }
   }
 
-  const [overallPrompt] = outputPrompts;
-  for (const firstSentenceRule of [
-    "synthesis: 첫 문장은 한자·십성·일간·월지 없이",
-    "lifetime: 첫 문장은 전문용어 없이",
-    "annual: 첫 문장은 한자·명리 용어 없이",
-    "overview는 전문용어 없는 생활 문장으로 시작한 뒤",
-  ]) {
-    assert.ok(overallPrompt.includes(firstSentenceRule), `종합 해석 지시에 '${firstSentenceRule}' 규칙이 있어야 함`);
-  }
+  assert.ok(overallPrompt.includes(SAJU_READING_PLAIN_FOUNDATION));
+  assert.ok(!overallPrompt.includes(SAJU_READING_FOUNDATION));
 });
 
 test("두 AI 해석 모두 내부 보류 상태를 독자에게 읽히는 사주 풀이로 바꾸도록 지시한다", () => {
   for (const prompt of prompts()) {
-    assert.match(prompt, /'판정 보류', '조건부 후보', '강약 경계'는 내부 계산 상태입니다/);
+    assert.match(prompt, /'판정 보류', '조건부 후보', '강약 경계'/);
+    assert.match(prompt, /내부 계산 상태/);
     assert.match(prompt, /그대로 (?:쓰지 말고|말하지 말고)/);
-    assert.match(prompt, /실제(?:로)? 사주에 나타난|사주에 실제로 나타난/);
+    assert.match(prompt, /실제로 나타난|실제 사주에 나타난|사주에 실제로 나타난/);
     assert.match(prompt, /최종 용신이나 전성기/);
   }
 });

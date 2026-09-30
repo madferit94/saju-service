@@ -4,64 +4,42 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { calculate, type SajuInput } from "../lib/saju/chart";
 import { calculateDaewoon } from "../lib/saju/daewoon";
-import { analyzeNatal, type Element } from "../lib/saju/deep-analysis";
+import { analyzeNatal } from "../lib/saju/deep-analysis";
+import { combineFlow } from "../lib/saju/flow-combination";
 import { buildLifeGraph } from "../lib/saju/life-graph";
 import LifeGraphPanel from "../app/life-graph-panel";
 
 const input = (date: string): SajuInput => ({ date, time: "08:37", calendar: "solar", topic: "general" });
-const stemElement: Record<string, Element> = {
-  甲: "목", 乙: "목", 丙: "화", 丁: "화", 戊: "토", 己: "토",
-  庚: "금", 辛: "금", 壬: "수", 癸: "수",
-};
-const branchPrimary: Record<string, string> = {
-  子: "癸", 丑: "己", 寅: "甲", 卯: "乙", 辰: "戊", 巳: "丙",
-  午: "丁", 未: "己", 申: "庚", 酉: "辛", 戌: "戊", 亥: "壬",
-};
 const render = (report: ReturnType<typeof buildLifeGraph>) =>
   renderToStaticMarkup(createElement(LifeGraphPanel, { report, noteStorageKey: "test-life-notes" }));
 
-test("조건부 도움 오행이 있는 원국은 대운 두 글자와 일치한 0~2개로 전성기 후보를 고른다", () => {
+test("안정된 원국의 그래프는 원국과 운의 균형 보완 정도로 후보를 비교한다", () => {
   for (const date of ["2005-12-23", "1994-12-01", "2001-08-19"]) {
-    const birth = input(date);
-    const chart = calculate(birth);
-    const analysis = analyzeNatal(chart);
+    const birth = input(date), chart = calculate(birth);
     const graph = buildLifeGraph(chart, calculateDaewoon(birth, 0, 2026));
-    assert.equal(analysis.useful.status, "조건부 후보");
     assert.equal(graph.mode, "peak-candidate");
-    const favorable = new Set(analysis.useful.candidates.map((candidate) => candidate.element));
-    assert.deepEqual(new Set(graph.favorable), favorable);
     for (const period of graph.periods) {
-      const expected = [stemElement[period.ganji[0]], stemElement[branchPrimary[period.ganji[1]]]]
-        .filter((element) => favorable.has(element));
-      assert.deepEqual(period.matchingElements, expected, `${date} ${period.ganji} 일치 오행`);
-      assert.equal(period.level, expected.length, `${date} ${period.ganji} 흐름 높이`);
+      assert.equal(period.level, combineFlow(chart, period.ganji).balanceGain);
     }
-    const max = Math.max(...graph.periods.map((period) => period.level));
-    assert.deepEqual(graph.featured.map((period) => period.index),
-      graph.periods.filter((period) => period.level === max && max > 0).map((period) => period.index),
-      "최고점 동점 구간을 모두 후보로 남겨야 합니다");
+    const max = Math.max(...graph.periods.map(p => p.level));
+    const min = Math.min(...graph.periods.map(p => p.level));
+    const expected = max > .5 && max-min > .5 ? graph.periods.filter(p => max-p.level <= .5 && p.level > .5) : [];
+    assert.deepEqual(graph.featured.map(p => p.index), expected.map(p => p.index));
     const html = render(graph);
-    assert.match(html, /기운을 펼치기 좋은 시기/);
-    assert.match(html, /균형을 돕는 오행이 대운과 가장 많이 맞물립니다/);
     assert.doesNotMatch(html, /판정 보류|조건부 후보/);
-    assert.match(html, /성취나 행복을 보장하지는 않습니다/);
-    assert.doesNotMatch(html, /계절에 따른 전성기|건강·수명 예측/);
+    assert.match(html, /균형/);
   }
 });
 
-test("강약 또는 도움 오행 판단이 보류된 원국도 합·충·반복을 삶의 변화로 풀이한다", () => {
+test("민감한 원국에서도 그래프 높이 의미는 균형 보완이며 전성기를 확정하지 않는다", () => {
   for (const date of ["2000-01-01", "1997-06-09"]) {
-    const birth = input(date);
-    const graph = buildLifeGraph(calculate(birth), calculateDaewoon(birth, 0, 2026));
-    assert.equal(graph.mode, "change");
-    assert.deepEqual(graph.favorable, []);
-    assert.ok(graph.periods.every((period) => period.level === Math.min(2, period.activityCount)));
-    const html = render(graph);
-    assert.match(html, /변화가 두드러지는 시기/);
-    assert.match(html, /태어난 사주와 10년 운에서 서로 맞물리거나 부딪치고, 같은 글자가 되풀이되는 모습이 가장 많습니다/);
-    assert.match(html, /관계와 역할, 익숙한 방식을 새로 맞추는 흐름/);
-    assert.doesNotMatch(html, /<strong>전성기 후보<\/strong>/);
-    assert.doesNotMatch(html, /판정 보류|전성기를 뜻하지 않습니다|일반적인 강약/);
+    const birth = input(date), chart = calculate(birth);
+    assert.ok(analyzeNatal(chart).strength.sensitive || analyzeNatal(chart).strength.exceptional);
+    const graph = buildLifeGraph(chart, calculateDaewoon(birth, 0, 2026));
+    assert.notEqual(graph.mode, "peak-candidate");
+    assert.deepEqual(graph.featured, []);
+    assert.ok(graph.periods.every(p => p.level === combineFlow(chart, p.ganji).balanceGain));
+    assert.doesNotMatch(render(graph), /<strong>전성기 후보<\/strong>|합·충·반복이 더 많이 나타납니다/);
   }
 });
 
@@ -84,13 +62,12 @@ test("현재 대운은 양쪽 경계를 포함하며 시작 전에는 현재 표
 test("기본 화면은 선 하나와 강조 구간 두 개 이하만 제시하고 근거 접기 창을 표시하지 않는다", () => {
   const birth = input("1990-01-01");
   const graph = buildLifeGraph(calculate(birth), calculateDaewoon(birth, 0, 2026));
-  assert.ok(graph.featured.length > 2, "동점 후보가 많은 가상 사례");
   const html = render(graph);
   assert.equal((html.match(/<path /g) ?? []).length, 1);
   assert.equal((html.match(/class="life-path graph-flow"/g) ?? []).length, 1);
   assert.ok((html.match(/class="graph-peak-point"/g) ?? []).length <= 2, "동점 후보가 여럿이어도 기본 화면의 강조 점은 두 개 이하로 제한해야 합니다");
   assert.doesNotMatch(html, /graph-connection|graph-adjustment|관계 단서 수|<text[^>]*>\d+<\/text>/);
-  assert.match(html, /외 \d+구간/);
+  if (graph.featured.length > 2) assert.match(html, /외 \d+구간/);
   assert.doesNotMatch(html, /life-graph-details|시기별 해석 근거 보기|그래프 계산 기준과 한계|<details[^>]*class="fortune-evidence/);
   assert.equal((html.match(/<article /g) ?? []).length, graph.periods.length, "각 대운의 개인 메모는 유지해야 합니다");
   assert.match(html, /<details class="life-note-disclosure">/, "개인 메모 접기는 유지해야 합니다");

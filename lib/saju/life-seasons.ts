@@ -1,3 +1,5 @@
+import lunar from "lunar-javascript";
+import { flowParts } from "./flow-combination";
 import type { SajuChart } from "./chart";
 import type { DaewoonTimeline } from "./daewoon";
 import { analyzeFlow, forLifeStage } from "./fortune";
@@ -33,9 +35,12 @@ export function buildLifeSeasons(chart:SajuChart,timeline:DaewoonTimeline) {
     const flow=analyzeFlow(chart,p.ganji,`${p.korean} 대운`);
     const branchGod=flow.hiddenStems[0]?.god;
     if(!branchGod) throw new Error("대운의 아래 글자에 담긴 관계를 확인할 수 없습니다.");
-    const season=seasonForGod(flow.stemGod),branchSeason=seasonForGod(branchGod);
-    const secondarySeason=branchSeason!==season ? branchSeason : undefined;
-    const reason=`${p.korean}(${p.ganji}) 대운의 앞글자는 ${flow.stemGod}(${godPlain[flow.stemGod]}), 아래글자의 중심은 ${branchGod}(${godPlain[branchGod]})으로 읽습니다. ${SEASONS[season].label}은 앞글자의 주제이며${secondarySeason?` 아래글자에는 ${SEASONS[secondarySeason].label}의 주제도 함께 있습니다.`:" 두 글자의 계절 주제가 같습니다."}`;
+    const weights = {spring:0,summer:0,autumn:0,winter:0};
+    for (const part of flowParts(chart.dayMaster.character,p.ganji)) weights[seasonForGod(part.god)] += part.weight;
+    const ranked = (Object.keys(weights) as LifeSeason[]).sort((a,b)=>weights[b]-weights[a]);
+    const season=ranked[0],branchSeason=ranked[1];
+    const secondarySeason=weights[branchSeason]>0 ? branchSeason : undefined;
+    const reason=`${p.korean}(${p.ganji}) 대운의 ${flow.stemGod}(${godPlain[flow.stemGod]})와 지장간의 ${flow.hiddenStems.map(h=>h.god).join("·")}을 함께 보면 ${SEASONS[season].theme}의 비중이 큽니다.${secondarySeason?` ${SEASONS[secondarySeason].theme}의 주제도 함께 있습니다.`:""} ${flow.combination.reason}`;
     const childhood=forLifeStage(flow,Math.min(p.endAge,19));
     const isChild=p.endAge<20,spansAdulthood=p.startAge<20 && p.endAge>=20;
     const later=forLifeStage(flow,Math.max(60,p.endAge));
@@ -50,14 +55,17 @@ export function buildLifeSeasons(chart:SajuChart,timeline:DaewoonTimeline) {
   const active=periods.find(p=>p.startYear<=timeline.currentYear && timeline.currentYear<=p.endYear);
   const currentAge=active ? active.startAge+timeline.currentYear-active.startYear : null;
   const currentReading=active && currentAge!==null ? forLifeStage(analyzeFlow(chart,active.ganji,`${active.korean} 대운`),currentAge) : null;
+  const annualGanji = lunar.Solar.fromYmdHms(timeline.currentYear,7,1,12,0,0).getLunar().getEightChar().getYear();
+  const annual = active && currentAge!==null ? forLifeStage(analyzeFlow(chart,annualGanji,`${timeline.currentYear}년`,[{label:"현재 대운",ganji:active.ganji}]),currentAge) : null;
   const current=active ? {
     periodIndex:active.index,currentYear:timeline.currentYear,startYear:active.startYear,endYear:active.endYear,
     progress:(timeline.currentYear-active.startYear+.5)/(active.endYear-active.startYear+1),
     season:active.season,seasonLabel:active.seasonLabel,
+    reason:active.reason, annualGanji, annualTheme:annual!.opportunity, annualAction:annual!.action,
     opportunity:currentReading!.opportunity,risk:currentReading!.risk,action:currentReading!.action,
   } : null;
   const preDaewoon=!current && timeline.periods.some(p=>p.index===0 && p.startYear<=timeline.currentYear && timeline.currentYear<=p.endYear);
   return {periods,current,preDaewoon,
-    method:"네 기둥에서 나를 나타내는 글자와 각 대운의 앞글자·아래글자 중심 글자 사이의 십성을 비교합니다. 앞글자의 주제를 대표 계절로, 다른 아래글자의 주제는 함께 오는 계절로 표시합니다. 봄·여름·가을·겨울은 반복되거나 순서를 건너뛸 수 있습니다. 계절은 길흉 점수나 성취 확률이 아니며, 실제 경험과 환경을 함께 비교해 읽어 주세요."};
+    method:"네 기둥에서 나를 나타내는 글자와 각 대운의 앞글자·아래글자 중심 글자 사이의 십성을 비교합니다. 천간 10과 지장간 15의 십성 주제 비중으로 대표 계절을 정합니다. 같은 계절의 비중은 합하고 동점은 봄·여름·가을·겨울 순으로 표시하며 함께 오는 주제를 밝힙니다. 봄·여름·가을·겨울은 반복되거나 순서를 건너뛸 수 있습니다. 계절은 길흉 점수나 성취 확률이 아니며, 실제 경험과 환경을 함께 비교해 읽어 주세요."};
 }
 export type LifeSeasonsReport = ReturnType<typeof buildLifeSeasons>;

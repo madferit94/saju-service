@@ -14,6 +14,8 @@ import {
 } from "../lib/saju/daewoon";
 import { calculateBenefactors, type Benefactor } from "../lib/saju/benefactors";
 import { validateGeminiSajuReading, type GeminiSajuReading } from "../lib/saju/gemini-reading";
+import { validateReadingSummary, type ReadingSummary } from "../lib/saju/reading-summary";
+import { ReadingSession, readingSessionKey } from "../lib/saju/reading-session";
 import { analyzeNatal } from "../lib/saju/deep-analysis";
 import type { Consultation } from "../lib/saju/consultation";
 import DeepAnalysisPanel from "./deep-analysis-panel";
@@ -26,6 +28,8 @@ import LifeGraphPanel from "./life-graph-panel";
 import { buildLifeGraph } from "../lib/saju/life-graph";
 import { lifeNoteStorageKey } from "../lib/saju/life-notes";
 import { buildLocalReading } from "../lib/saju/reading";
+import { buildDoryeongOneLine } from "../lib/saju/doryeong-one-line";
+import DoryeongShareCard from "./doryeong-share-card";
 import { clearSavedSajuResult, readSavedSajuResult, writeSavedSajuResult } from "../lib/saju/persistence";
 import type { Birthplace } from "../lib/saju/birth-moment";
 import { getCalendarCandidates, type CalendarCandidate } from "../lib/saju/calendar";
@@ -34,6 +38,8 @@ import { buildFortuneReport } from "../lib/saju/fortune";
 import FortunePanel from "./fortune-panel";
 import AccountPanel from "./account-panel";
 import type { CloudPayload } from "../lib/account/results";
+import ReportNavigation from "./report-navigation";
+import { reportPageFromUrl, reportPageUrl, type ReportPage } from "../lib/report-pages";
 
 type PreparedCalendarChoice = {
   label: string;
@@ -52,6 +58,7 @@ const groups: { status: PeriodStatus; title: string; description: string }[] = [
 ];
 
 export default function SajuForm() {
+  const [activePage, setActivePage] = useState<ReportPage>("chart");
   const [resultSource, setResultSource] = useState<"local" | "cloud">("local");
   const resultSourceRef = useRef<"local" | "cloud">("local");
   const [resultSavedAt, setResultSavedAt] = useState("");
@@ -75,15 +82,19 @@ export default function SajuForm() {
   const [reading, setReading] = useState<GeminiSajuReading | null>(null);
   const [pendingInput, setPendingInput] = useState<SajuInput | null>(null);
   const [yunGender, setYunGender] = useState<0 | 1 | null>(null);
-  const [consentAccepted, setConsentAccepted] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [readingError, setReadingError] = useState("");
   const [storageWarning, setStorageWarning] = useState(false);
   const [error, setError] = useState("");
+  const aiController = useRef<AbortController | null>(null);
+  const readingSession = useRef(new ReadingSession());
+  const [summary, setSummary] = useState<ReadingSummary | null>(null);
+  const [readingPhase, setReadingPhase] = useState<"summary" | "full">("summary");
   const localReading = useMemo(() => chart && timeline ? buildLocalReading(chart, timeline, benefactors) : null, [chart, timeline, benefactors]);
   const fortune = useMemo(() => chart && timeline ? buildFortuneReport(chart, timeline, fortuneYear) : null, [chart, timeline, fortuneYear]);
   const visibleReading = reading?.readingVersion === 2 && reading.analysisVersion === 1 && reading.fortuneYear === fortuneYear ? reading : null;
   const deepAnalysis = useMemo(() => chart ? analyzeNatal(chart) : null, [chart]);
+  const doryeongOneLine = useMemo(() => chart ? buildDoryeongOneLine(chart) : null, [chart]);
   const lifeSeasons = useMemo(() => chart && timeline ? buildLifeSeasons(chart, timeline) : null, [chart, timeline]);
   const lifeGraph = useMemo(() => chart && timeline ? buildLifeGraph(chart, timeline) : null, [chart, timeline]);
   const cloudPayload = useMemo<CloudPayload | null>(() => chart && timeline && pendingInput && yunGender !== null ? {
@@ -91,7 +102,16 @@ export default function SajuForm() {
     result: { version: 1, savedAt: resultSavedAt, input: pendingInput, yunGender, chart, timeline, benefactors, reading, consultation },
   } : null, [chart, timeline, pendingInput, yunGender, benefactors, reading, consultation, fortuneYear, resultSavedAt]);
 
+  function navigateTo(page: ReportPage) {
+    if (typeof window === "undefined") return;
+    const nextUrl = reportPageUrl(new URL(window.location.href), page);
+    window.history.pushState(null, "", nextUrl);
+    setActivePage(page);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
   function loadCloudResult(payload: CloudPayload) {
+    aiController.current?.abort(); setSummary(null);
     generation.current++;
     setConsultation(payload.result.consultation); setIsGenerating(false);
     resultSourceRef.current = "cloud";
@@ -99,23 +119,40 @@ export default function SajuForm() {
     setChart(payload.result.chart); setTimeline(payload.result.timeline);
     setBenefactors(payload.result.benefactors); setReading(payload.result.reading);
     setPendingInput(payload.result.input); setYunGender(payload.result.yunGender);
-    setFortuneYear(payload.fortuneYear); setConsentAccepted(false);
+    setFortuneYear(payload.fortuneYear);
     setReadingError(""); setError(""); setCalendarChoices([]); setStorageWarning(false);
+    navigateTo("chart");
   }
 
   function clearCloudResult() {
+    aiController.current?.abort(); readingSession.current.clear(); setSummary(null);
+    generation.current++; setIsGenerating(false);
     if (resultSourceRef.current !== "cloud") return;
     resultSourceRef.current = "local";
     generation.current++;
     setConsultation(undefined);
     setChart(null); setTimeline(null); setBenefactors([]); setReading(null);
-    setPendingInput(null); setYunGender(null); setConsentAccepted(false);
+    setPendingInput(null); setYunGender(null);
     setReadingError(""); setIsGenerating(false); setResultSource("local");
+    navigateTo("input");
   }
 
   useEffect(() => {
+    return () => { generation.current++; aiController.current?.abort(); readingSession.current.clear(); };
+  }, []);
+
+  function changeFortuneYear(year: number) {
+    generation.current++; aiController.current?.abort();
+    setSummary(null); setIsGenerating(false); setReadingError(""); setFortuneYear(year);
+  }
+
+  useEffect(() => {
+    const syncPage = () => setActivePage(reportPageFromUrl(new URL(window.location.href)));
+    syncPage();
+    window.addEventListener("popstate", syncPage);
+    window.addEventListener("hashchange", syncPage);
     const saved = readSavedSajuResult();
-    if (!saved) return;
+    if (!saved) return () => { window.removeEventListener("popstate", syncPage); window.removeEventListener("hashchange", syncPage); };
     setResultSavedAt(saved.savedAt);
     setChart(saved.chart);
     setTimeline(saved.timeline);
@@ -125,6 +162,7 @@ export default function SajuForm() {
     if (saved.consultation) setFortuneYear(saved.consultation.year);
     setPendingInput(saved.input);
     setYunGender(saved.yunGender);
+    return () => { window.removeEventListener("popstate", syncPage); window.removeEventListener("hashchange", syncPage); };
   }, []);
 
   useEffect(() => {
@@ -152,6 +190,7 @@ export default function SajuForm() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    aiController.current?.abort(); setSummary(null);
     generation.current++;
     setConsultation(undefined);
     setResultSource("local");
@@ -162,7 +201,7 @@ export default function SajuForm() {
     setBenefactors([]);
     setPendingInput(null);
     setYunGender(null);
-    setConsentAccepted(false);
+    setIsGenerating(false);
     setReadingError("");
     setCalendarChoices([]);
     const data = new FormData(event.currentTarget);
@@ -240,21 +279,56 @@ export default function SajuForm() {
         reading: null,
       });
       setStorageWarning(!saved);
+      navigateTo("chart");
+      void requestGeminiReading(choice);
   }
 
-  async function requestGeminiReading() {
-    if (!consentAccepted || !pendingInput || yunGender === null || !chart || !timeline) return;
+  async function requestGeminiReading(choice?: PreparedCalendarChoice) {
+    const requestInput = choice?.input ?? pendingInput;
+    const requestGender = choice?.gender ?? yunGender;
+    const requestChart = choice?.chart ?? chart;
+    const requestTimeline = choice?.timeline ?? timeline;
+    const requestBenefactors = choice?.benefactors ?? benefactors;
+    if (!requestInput || requestGender === null || !requestChart || !requestTimeline) return;
+    const source = resultSourceRef.current;
     const ticket = ++generation.current;
+    aiController.current?.abort();
+    const controller = new AbortController();
+    aiController.current = controller;
+    const key = readingSessionKey(requestInput, requestGender, fortuneYear);
+    const cached = readingSession.current.get(key);
+    setSummary(cached?.summary ?? null);
     setIsGenerating(true);
     setReadingError("");
     try {
-      const response = await fetch("/api/reading", {
+      if (!cached?.reading && !cached?.summary) {
+        setReadingPhase("summary");
+        try {
+          const early = await fetch("/api/reading", {
+            method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", signal: controller.signal,
+            body: JSON.stringify({ consent: true, input: requestInput, yunGender: requestGender, fortuneYear, stage: "summary" }),
+          });
+          const body = await early.json();
+          if (ticket !== generation.current || controller.signal.aborted) return;
+          if (early.ok) {
+            const nextSummary = validateReadingSummary(body.summary);
+            readingSession.current.set(key, { summary: nextSummary }); setSummary(nextSummary);
+          }
+        } catch {
+          if (ticket !== generation.current || controller.signal.aborted) return;
+          // The full reading remains available when the optional short response fails.
+        }
+      }
+      if (ticket !== generation.current || controller.signal.aborted) return;
+      setReadingPhase("full");
+      const response = cached?.reading ? null : await fetch("/api/reading", {
         method: "POST",
+        signal: controller.signal,
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        body: JSON.stringify({ consent: true, input: pendingInput, yunGender, fortuneYear }),
+        body: JSON.stringify({ consent: true, input: requestInput, yunGender: requestGender, fortuneYear, stage: "full" }),
       });
-      const body = await response.json() as {
+      const body = (cached?.reading ? { chart: requestChart, timeline: requestTimeline, benefactors: requestBenefactors, reading: cached.reading } : await response!.json()) as {
         chart?: SajuChart;
         timeline?: DaewoonTimeline;
         benefactors?: Benefactor[];
@@ -262,43 +336,43 @@ export default function SajuForm() {
         error?: { message?: string };
       };
       if (ticket !== generation.current) return;
-      if (!response.ok) throw new Error(body.error?.message || "Gemini 해석을 만들지 못했습니다. 다시 시도해 주세요.");
+      if (response && !response.ok) throw new Error(body.error?.message || "Gemini 해석을 만들지 못했습니다. 다시 시도해 주세요.");
       if (!body.chart || !body.timeline || !body.benefactors || !body.reading) {
         throw new Error("Gemini 해석 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
       }
       const nextReading = validateGeminiSajuReading(body.reading, body.timeline.periods.map((period) => period.index), fortuneYear);
+      readingSession.current.set(key, { reading: nextReading });
       setChart(body.chart);
       setTimeline(body.timeline);
       setBenefactors(body.benefactors);
       setReading(nextReading);
-      setConsentAccepted(false);
       const savedAt = new Date().toISOString();
       setResultSavedAt(savedAt);
-      const saved = resultSource === "cloud" || writeSavedSajuResult({
+      const saved = source === "cloud" || writeSavedSajuResult({
         version: 1,
         savedAt,
-        input: pendingInput,
-        yunGender,
+        input: requestInput,
+        yunGender: requestGender,
         chart: body.chart,
         timeline: body.timeline,
         benefactors: body.benefactors,
         reading: nextReading,
-        consultation,
+        consultation: choice ? undefined : consultation,
       });
       setStorageWarning(!saved);
     } catch (caught) {
       if (ticket !== generation.current) return;
       setReadingError(caught instanceof Error ? caught.message : "해석 생성에 실패했습니다. 다시 시도해 주세요.");
-      const saved = resultSource === "cloud" || writeSavedSajuResult({
+      const saved = source === "cloud" || writeSavedSajuResult({
         version: 1,
         savedAt: new Date().toISOString(),
-        input: pendingInput,
-        yunGender,
-        chart,
-        timeline,
-        benefactors,
-        reading,
-        consultation,
+        input: requestInput,
+        yunGender: requestGender,
+        chart: requestChart,
+        timeline: requestTimeline,
+        benefactors: requestBenefactors,
+        reading: choice ? null : reading,
+        consultation: choice ? undefined : consultation,
       });
       setStorageWarning(!saved);
     } finally {
@@ -307,7 +381,8 @@ export default function SajuForm() {
   }
 
   return (
-    <section className="input-card" aria-labelledby="input-title">
+    <section className={`input-card${chart && activePage !== "input" ? " report-mode" : ""}`} aria-label="사주 서비스">
+      <div className="input-entry" hidden={Boolean(chart && activePage !== "input")}>
       <AccountPanel current={cloudPayload} busy={isGenerating} onLoad={loadCloudResult} onClearCloud={clearCloudResult} />
       <h2 id="input-title">언제 태어나셨나요?</h2>
       <p className="form-intro">출생 정보를 입력하면 나에게 맞는 대운의 시간표를 볼 수 있습니다.</p>
@@ -402,7 +477,8 @@ export default function SajuForm() {
         </fieldset>
 
         <p className="input-note">1990년 이후 출생과 정확한 출생시간을 지원합니다. 출생지는 도시 목록에서 선택해 주세요.</p>
-        <button type="submit" disabled={isGenerating}>내 인생 흐름 보기</button>
+        <p className="gemini-submit-note">사주를 계산한 뒤 Gemini가 종합 풀이를 이어서 만듭니다. 계산된 사주 자료가 Google로 전송되며, 생년월일·출생 시각·출생지 원문은 전달하지 않습니다.</p>
+        <button type="submit" disabled={isGenerating}>내 사주 보기</button>
       </form>
 
       <div className="feedback" aria-live="polite">
@@ -425,8 +501,16 @@ export default function SajuForm() {
             </div>
           </section>
         )}
-        {storageWarning && <p className="storage-warning" role="status">브라우저 저장 공간을 사용할 수 없어 이 결과를 새로고침 후 복원하지 못할 수 있습니다.</p>}
-        {chart && (
+      </div>
+      </div>
+      {chart && <ReportNavigation activePage={activePage} onNavigate={navigateTo} />}
+      {storageWarning && <p className="storage-warning" role="status">브라우저 저장 공간을 사용할 수 없어 이 결과를 새로고침 후 복원하지 못할 수 있습니다.</p>}
+        {pendingInput && activePage === "chart" && isGenerating && <p className="reading-generation-status" role="status">{readingPhase === "summary" ? "사주표를 먼저 보여드립니다. 핵심 풀이를 준비하고 있습니다…" : "평생운·월별 흐름을 담은 상세 풀이를 이어서 만들고 있습니다…"}</p>}
+        {pendingInput && activePage === "chart" && visibleReading && !visibleReading.starReading && !isGenerating && <div className="reading-generation-status"><p>저장된 풀이는 귀인·신살 확장 전 해석입니다.</p><button type="button" onClick={() => void requestGeminiReading()}>귀인·신살을 반영해 다시 풀이</button></div>}
+        {summary && !visibleReading && activePage === "chart" && <section className="reading-result" aria-label="먼저 보는 핵심 풀이"><h2>먼저 보는 핵심 풀이</h2><p>{summary.synthesis}</p><h3>올해의 방향</h3><p>{summary.current}</p><h3>지금 할 수 있는 일</h3><p>{summary.action}</p></section>}
+        {pendingInput && activePage === "chart" && readingError && <div className="reading-generation-error" role="alert"><p>{readingError}</p><button type="button" disabled={isGenerating} onClick={() => void requestGeminiReading()}>Gemini 해석 다시 시도</button></div>}
+        {pendingInput && activePage === "chart" && reading && !visibleReading && !isGenerating && !readingError && <div className="reading-generation-status"><p>저장된 해석은 다른 연도나 이전 방식으로 작성되었습니다.</p><button type="button" onClick={() => void requestGeminiReading()}>선택한 연도로 Gemini 해석 만들기</button></div>}
+        {chart && activePage === "chart" && (
           <section className="result chart-result" aria-labelledby="result-title">
             {resultSource === "cloud" && <p className="method-help">계정에서 불러온 결과입니다. 새 해석을 만들면 보관함의 ‘계정에 저장’을 눌러 새 기록으로 남겨 주세요.</p>}
             <p className="result-label">계산 결과</p>
@@ -437,24 +521,31 @@ export default function SajuForm() {
               일간은 {chart.dayMaster.korean}
               {chart.dayMaster.element}({chart.dayMaster.character})입니다.
             </p>
-            <MansePanel chart={chart} benefactors={benefactors} />
+            {doryeongOneLine && <div className="doryeong-one-line" aria-label="도령의 사주 한줄평">
+              <p className="doryeong-one-line-label">도령의 사주 한줄평</p>
+              <p className="doryeong-one-line-quote">“{doryeongOneLine.line}”</p>
+              <p className="doryeong-one-line-basis">{doryeongOneLine.basis}</p>
+              <DoryeongShareCard line={doryeongOneLine.line} />
+            </div>}
+            <MansePanel chart={chart} benefactors={benefactors} timeline={timeline ?? undefined} fortuneYear={fortuneYear} mode="chart" />
           </section>
         )}
-        {chart && timeline && <DailyFortunePanel chart={chart} timeline={timeline} />}
-        {lifeGraph && pendingInput && yunGender !== null && <LifeGraphPanel key={lifeNoteStorageKey(pendingInput, yunGender)} report={lifeGraph} noteStorageKey={lifeNoteStorageKey(pendingInput, yunGender)} />}
-        {lifeSeasons && <LifeSeasonsPanel report={lifeSeasons} />}
-        {deepAnalysis && <DeepAnalysisPanel analysis={deepAnalysis} />}
-        {chart && timeline && fortune && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={setFortuneYear} disabled={isGenerating} />}
-        {fortune && (
+        {chart && activePage === "elements" && <section className="result" aria-label="오행과 십성"><MansePanel chart={chart} benefactors={benefactors} mode="elements" /></section>}
+        {chart && timeline && activePage === "daily" && <DailyFortunePanel chart={chart} timeline={timeline} />}
+        {lifeGraph && pendingInput && yunGender !== null && activePage === "graph" && <LifeGraphPanel key={lifeNoteStorageKey(pendingInput, yunGender)} report={lifeGraph} noteStorageKey={lifeNoteStorageKey(pendingInput, yunGender)} />}
+        {lifeSeasons && activePage === "seasons" && <LifeSeasonsPanel report={lifeSeasons} />}
+        {deepAnalysis && chart && activePage === "balance" && <DeepAnalysisPanel chart={chart} analysis={deepAnalysis} />}
+        {chart && timeline && fortune && activePage === "flow" && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={changeFortuneYear} disabled={isGenerating} />}
+        {fortune && (activePage === "flow" || activePage === "domains") && (
           <div className="integrated-reading">
             <label htmlFor="fortune-year">살펴볼 운의 연도</label>
-            <select id="fortune-year" value={fortuneYear} disabled={isGenerating} onChange={(event) => setFortuneYear(Number(event.target.value))}>
+            <select id="fortune-year" value={fortuneYear} disabled={isGenerating} onChange={(event) => changeFortuneYear(Number(event.target.value))}>
               {Array.from({ length: 111 }, (_, index) => 1990 + index).map((year) => <option key={year} value={year}>{year}년</option>)}
             </select>
-            <FortunePanel report={fortune} reading={visibleReading} timezone={chart?.birthplace?.timezone} />
+            <FortunePanel report={fortune} reading={visibleReading} timezone={chart?.birthplace?.timezone} mode={activePage === "domains" ? "domains" : "flow"} onDomains={() => navigateTo("domains")} />
           </div>
         )}
-        {timeline && (
+        {timeline && activePage === "flow" && (
           <section className="timeline-result" aria-labelledby="timeline-title">
             <div className="timeline-heading">
               <p className="result-label">나의 대운 시간표</p>
@@ -513,11 +604,11 @@ export default function SajuForm() {
                 </section>
               );
             })}
-            <p className="timeline-footnote">사주식 나이는 태어난 해를 1세로 셉니다. 대운은 시기별로 살펴보는 전통적 틀이며, 실제 사건이나 미래를 확정하지 않습니다.</p>
+            <p className="timeline-footnote">사주식 나이는 태어난 해를 1세로 셉니다.</p>
 
           </section>
         )}
-        {localReading && (
+        {localReading && activePage === "chart" && (
           <section className="reading-result" aria-labelledby="pillar-reading-title">
             <h2 id="pillar-reading-title">타고난 네 기둥 읽기</h2>
             <div className="pillar-reading-grid">
@@ -530,22 +621,7 @@ export default function SajuForm() {
             </div>
           </section>
         )}
-        {pendingInput && (
-          <details className="gemini-consent">
-            <summary>선택 사항 · Gemini 종합 해석 추가하기</summary>
-            <p>동의하면 계산된 사주 네 기둥, 오행 분포, 귀인 근거, 십성·지장간·합충, 강약 비교·격국·용신 후보와 대운·세운·월운 정보가 Google Gemini로 전송되어 해석에 사용됩니다. 원래 입력한 생년월일, 출생 시각과 출생지는 전달하지 않습니다. 해석 문장은 AI가 생성합니다.</p>
-            {reading && !visibleReading && <p className="storage-warning">저장된 해석은 이전 방식 또는 다른 연도로 작성되었습니다. 위에는 현재 계산으로 만든 풀이가 표시됩니다. 아래에서 새 해석을 생성할 수 있으며, 실패해도 이전 저장 해석은 보존됩니다.</p>}
-            <p className="storage-note">{resultSource === "cloud" ? "계정에서 연 결과는 기기에 자동 저장하지 않습니다. 새 해석을 보관하려면 계정에 저장을 눌러 주세요." : "계산 결과와 만든 해석은 이 브라우저에 저장됩니다. 다른 기기에서도 보려면 로그인 후 계정에 저장을 눌러 주세요."}</p>
-            <label className="consent-option" htmlFor="gemini-consent">
-              <input id="gemini-consent" type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} />
-              계산 정보를 Google Gemini에 보내 종합 해석을 만드는 데 동의합니다.
-            </label>
-            {readingError && <p className="error" role="alert">{readingError}</p>}
-            <button type="button" onClick={requestGeminiReading} disabled={!consentAccepted || isGenerating}>{isGenerating ? "종합 해석 작성 중…" : reading ? "종합 해석 다시 작성하기" : "종합 해석 만들기"}</button>
-            {isGenerating && <p className="method-help" role="status">종합 해석을 만들고 있습니다. 잠시 기다려 주세요.</p>}
-          </details>
-        )}
-        {visibleReading && (
+        {visibleReading && activePage === "chart" && (
           <section className="reading-result" aria-labelledby="reading-title">
             <p className="result-label">나의 사주 종합 분석</p>
             <h2 id="reading-title">타고난 바탕과 선택의 방향</h2>
@@ -554,11 +630,10 @@ export default function SajuForm() {
               {([
                 ["삶 전반", visibleReading.overview],
                 ["오행", visibleReading.elements],
-                ["귀인", visibleReading.benefactors],
+                [visibleReading.starReading ? "귀인·신살 종합" : "귀인 · 이전 풀이", visibleReading.starReading || visibleReading.benefactors],
                 ["진로와 일", visibleReading.career],
                 ["관계", visibleReading.relationships],
                 ["돈", visibleReading.money],
-                ["특히 조심할 점", visibleReading.caution],
               ] as const).map(([title, content]) => (
                 <article className="reading-card" key={title}>
                   <h3>{title}</h3>
@@ -568,7 +643,6 @@ export default function SajuForm() {
             </div>
           </section>
         )}
-      </div>
     </section>
   );
 }

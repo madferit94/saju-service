@@ -5,8 +5,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { calculate, type SajuInput } from "../lib/saju/chart";
 import { calculateDaewoon, type DaewoonTimeline } from "../lib/saju/daewoon";
 import { buildLifeSeasons, seasonForGod } from "../lib/saju/life-seasons";
+import { flowParts } from "../lib/saju/flow-combination";
 import LifeSeasonsPanel from "../app/life-seasons-panel";
-import MansePanel from "../app/manse-panel";
+import ReportNavigation from "../app/report-navigation";
 
 const birth: SajuInput = { date: "2005-12-23", time: "08:37", calendar: "solar", topic: "general" };
 const chart = calculate(birth);
@@ -21,15 +22,20 @@ test("십성의 네 묶음은 주제별 계절에 대응하고 모르는 십성�
   assert.throws(() => seasonForGod("알 수 없음"), /분류/);
 });
 
-test("실제 대운의 앞글자 주제와 아래글자 중심 주제를 나누어 설명한다", () => {
+test("실제 대운의 천간과 모든 지장간의 주제를 가중 비중으로 함께 설명한다", () => {
   const timeline = calculateDaewoon(birth, 0, 2026);
   const report = buildLifeSeasons(chart, timeline);
   assert.equal(report.periods.length, timeline.periods.filter(period => period.ganji).length);
   assert.equal(report.periods[0].index, 1, "대운 시작 전 구간은 계절로 분류하지 않는다");
   assert.deepEqual(report.periods.map(period => period.index), timeline.periods.filter(period => period.ganji).map(period => period.index));
   for (const period of report.periods) {
-    assert.equal(period.season, seasonForGod(period.stemGod));
-    assert.equal(period.secondarySeason, seasonForGod(period.branchGod) === period.season ? undefined : seasonForGod(period.branchGod));
+    const parts = flowParts(chart.dayMaster.character, period.ganji);
+    const weights = new Map(["spring", "summer", "autumn", "winter"].map(season => [season, 0]));
+    for (const part of parts) weights.set(seasonForGod(part.god), weights.get(seasonForGod(part.god))! + part.weight);
+    const ranked = [...weights].sort((a,b) => b[1]-a[1]);
+    assert.equal(period.season, ranked[0][0]);
+    assert.equal(period.secondarySeason, ranked[1][1] > 0 ? ranked[1][0] : undefined);
+    for (const part of parts) assert.ok(period.reason.includes(part.god));
     assert.ok(period.reason.includes(period.stemGod));
     assert.ok(period.reason.includes(period.branchGod));
     assert.ok(period.reason.includes(period.ganji));
@@ -140,14 +146,14 @@ test("인생 그래프와 4계절 풀이가 각각 독립된 목적지와 제목
   assert.doesNotMatch(html, /<svg\b|class="life-graph-wrap"|id="life-graph"/);
 });
 
-test("결과 바로가기에서 인생 그래프와 4계절 풀이로 각각 이동한다", () => {
-  const html = renderToStaticMarkup(createElement(MansePanel, { chart, benefactors: [] }));
-  const nav = html.match(/<nav[^>]*aria-label="결과 바로가기"[^>]*>(.*?)<\/nav>/)?.[1];
-  assert.ok(nav, "결과 바로가기 메뉴가 있어야 한다");
-  assert.match(nav, /<a href="#life-graph">인생 그래프<\/a>/);
-  assert.match(nav, /<a href="#life-seasons">인생 4계절<\/a>/);
-  assert.equal((nav.match(/href="#life-graph"/g) ?? []).length, 1);
-  assert.equal((nav.match(/href="#life-seasons"/g) ?? []).length, 1);
+test("결과 메뉴에서 인생 그래프와 4계절 풀이의 개별 화면으로 이동한다", () => {
+  const html = renderToStaticMarkup(createElement(ReportNavigation, { activePage: "seasons", onNavigate: () => undefined }));
+  const nav = html.match(/<nav[^>]*aria-label="사주 결과 항목"[^>]*>(.*?)<\/nav>/)?.[1];
+  assert.ok(nav, "결과 항목 메뉴가 있어야 한다");
+  assert.match(nav, /<a href="\?view=graph">인생 그래프<\/a>/);
+  assert.match(nav, /<a href="\?view=seasons" aria-current="page">인생 4계절<\/a>/);
+  assert.equal((nav.match(/href="\?view=graph"/g) ?? []).length, 1);
+  assert.equal((nav.match(/href="\?view=seasons"/g) ?? []).length, 1);
 });
 
 test("대운 시작 전 화면은 없는 계절·현재 점을 만들지 않고 이유를 설명한다", () => {

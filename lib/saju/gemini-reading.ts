@@ -1,9 +1,11 @@
+import { calculateStars, type SajuStar } from "./stars";
 import type { Benefactor } from "./benefactors";
 import type { SajuChart } from "./chart";
 import type { DaewoonTimeline } from "./daewoon";
 import { buildFortuneReport, koreanGanji, type FortuneReport } from "./fortune";
 import { analyzeNatal, type DeepAnalysis } from "./deep-analysis";
-import { SAJU_READING_FOUNDATION } from "./reading-prompt";
+import { SAJU_READING_PLAIN_FOUNDATION } from "./reading-prompt";
+import { interpretationBasisSchema, type InterpretationBasis } from "./reading-quality";
 
 export type PeriodReading = {
   index: number;
@@ -15,6 +17,9 @@ export type PeriodReading = {
 };
 
 export type GeminiSajuReading = {
+  starReading?: string;
+  starEvidenceIds?: string[];
+  interpretationBasis?: InterpretationBasis;
   analysisVersion?: 1;
   readingVersion?: 2;
   fortuneYear?: number;
@@ -33,6 +38,8 @@ export type GeminiSajuReading = {
 };
 
 export type GeminiReadingContext = {
+  stars: SajuStar[];
+  age: number;
   analysis: DeepAnalysis;
   fortune: FortuneReport;
   pillars: Array<Pick<SajuChart["pillars"][number], "label" | "text" | "korean" | "stemElement" | "branchElement">>;
@@ -59,9 +66,16 @@ export function createGeminiReadingContext(
   benefactors: Benefactor[],
   fortuneYear = timeline.currentYear,
 ): GeminiReadingContext {
+  const fortune = buildFortuneReport(chart, timeline, fortuneYear);
+  const current = timeline.periods.find(p => p.startYear <= fortuneYear && p.endYear >= fortuneYear);
   return {
+    stars: calculateStars(chart, [
+      ...(current?.ganji ? [{label:`${fortuneYear}년의 대운`,ganji:current.ganji}] : []),
+      {label:`${fortuneYear}년 세운`,ganji:fortune.annual.ganji},
+    ]),
+    age: fortuneYear - timeline.periods[0].startYear + timeline.periods[0].startAge,
     analysis: analyzeNatal(chart),
-    fortune: buildFortuneReport(chart, timeline, fortuneYear),
+    fortune,
     pillars: chart.pillars.map(({ label, text, korean, stemElement, branchElement }) => ({
       label,
       text,
@@ -134,6 +148,9 @@ export function validateGeminiSajuReading(value: unknown, expectedPeriodIndexes:
       throw new Error("평생·세운·월운 종합 해석이 빠졌거나 계산 연도와 다릅니다.");
     }
   }
+  if (reading.starReading !== undefined || reading.starEvidenceIds !== undefined) {
+    if (!boundedText(reading.starReading, 2400) || !Array.isArray(reading.starEvidenceIds) || reading.starEvidenceIds.length > 10 || reading.starEvidenceIds.some(id => typeof id !== "string" || !/^star_[a-z]+$/.test(id))) throw new Error("귀인·신살 해석 형식이 올바르지 않습니다.");
+  }
   const summaryFields: (keyof Omit<GeminiSajuReading, "periodReadings">)[] = [
     "overview", "elements", "benefactors", "career", "relationships", "money", "caution",
   ];
@@ -161,6 +178,9 @@ export function validateGeminiSajuReading(value: unknown, expectedPeriodIndexes:
 export const geminiReadingResponseSchema = {
   type: "object",
   properties: {
+    starReading: { type: "string" },
+    starEvidenceIds: { type: "array", items: { type: "string" }, maxItems: 10 },
+    interpretationBasis: interpretationBasisSchema,
     readingVersion: { type: "integer", enum: [2] },
     fortuneYear: { type: "integer" },
     synthesis: { type: "string" },
@@ -194,34 +214,34 @@ export const geminiReadingResponseSchema = {
     money: { type: "string" },
     caution: { type: "string" },
   },
-  required: ["readingVersion", "fortuneYear", "synthesis", "lifetime", "annual", "monthly", "overview", "elements", "benefactors", "periodReadings", "career", "relationships", "money", "caution"],
+  required: ["starReading", "starEvidenceIds", "interpretationBasis", "readingVersion", "fortuneYear", "synthesis", "lifetime", "annual", "monthly", "overview", "elements", "benefactors", "periodReadings", "career", "relationships", "money", "caution"],
   additionalProperties: false,
 } as const;
 
 export function createGeminiReadingPrompt(context: GeminiReadingContext): string {
   return [
-    SAJU_READING_FOUNDATION,
-    "층위 구분을 엄수하세요. monthly에서 ganji는 월운, daewoonGanji는 대운, annualGanji는 세운입니다. 예를 들어 기축이 월운이면 '기축 대운'이라고 쓰면 계산 오류입니다. 각 monthly 필드 안에서는 이 세 가지 제공값 이외의 대운·세운·월운 간지를 언급하지 마세요. 간지와 한글 독음이 서로 정확히 맞아야 합니다.",
-    "lifetime은 반드시 '초년', '청년', '중년', '후반' 4개 소제목을 모두 포함하고 각 단락에 실제 연도 구간과 변화 이유를 쓰세요. fortune.lifetime.periods의 잘린 연령 구간을 그대로 따르며 한 대운 전체를 다른 생애 구간으로 옮기지 마세요. 대운 간지에는 한글 독음을 병기하세요.",
-    "필수 대운 index 목록: " + JSON.stringify(context.timeline.periods.map((p) => p.index)) + ". periodReadings의 길이는 반드시 " + context.timeline.periods.length + "개입니다. index 0이 목록에 있으면 간지가 비어 있어도 '대운 시작 전'의 양육·생활 환경 해석을 반드시 작성하세요. 빈 간지를 임의로 만들거나 이 항목을 생략하지 마세요.",
-    "각 필드는 계산된 정확한 간지·십성·지장간·합충 중 최소 두 근거를 연결하고 그 근거가 함께 만드는 장점과 부담, 실제 확인할 조건과 행동으로 이어지게 하세요.",
-    "십성은 첫 등장에 뜻을 풀어 쓰세요. 한자는 반드시 한글 독음을 병기하세요. 예: 丙午(병오), 정관(규칙·평가·책임). 지장간은 지지 안에 들어 있는 천간이라는 뜻을 설명하세요. 합을 무조건 호재, 충을 사고·이별로 단정하지 마세요. analysis는 서비스 비교 규칙으로 계산한 강약 경향, 월령 격국 후보, 억부 용신 후보와 간이 조후 관점입니다. 이를 원국과 운에 연결하세요. label이 보류·경계이면 강약을 확정하지 말고 useful.status가 판정 보류이면 용신을 지어내지 마세요. 격국 후보를 성격/파격 확정으로 바꾸지 마세요. 점수는 정확도나 확률이 아닙니다. 합화와 특수격은 확정하지 않습니다. 신강신약·격국·용신을 포함하지 않았다는 과거 안내를 쓰지 마세요.",
-    "'판정 보류', '조건부 후보', '강약 경계'는 내부 계산 상태입니다. 독자에게 그대로 말하지 말고 실제 사주에 나타난 오행의 배치와 계절, 합·충을 바탕으로 읽히는 흐름을 쉬운 문장으로 설명하세요. 근거가 없는 최종 용신이나 전성기를 만들어 내지는 마세요.",
-    "synthesis: 첫 문장은 한자·십성·일간·월지 없이 이 사람에게 읽히는 생활 쟁점을 직접 말하세요. 그다음 원국의 월지·일간·십성과 해당 대운, 선택 연도의 세운을 엮어 큰 쟁점 2개를 구분하세요. 상반된 작용이 있으면 어느 상황에서 장점/부담으로 드러날지 조건을 구분하세요. fortune.synthesis를 참고하되 그대로 복사하지 말고 근거를 발전시키세요.",
-    "lifetime: 첫 문장은 전문용어 없이 인생 흐름의 변화를 말하세요. 초년·청년·중년·후반을 각각 구분해 쓰세요. 각 시기마다 먼저 fortune.lifetime.periods의 실제 연도·연령·대운 간지와 일간에 대한 천간 십성, 지지의 중심 지장간 또는 원국과의 합충 중 확인된 근거를 적으세요. 그다음 등장한 십성의 뜻을 생활말로 짧게 풀고, 그 근거들이 함께 작용할 때 어떤 선택이 유리하고 어디서 부담이 생기는지 조건부로 설명하세요. 편인·편재처럼 낯선 이름을 나열한 뒤 뜻을 생략하지 마세요. 대운 시작 전에는 없는 간지를 만들지 마세요. 시기 사이에 이어갈 강점과 바꿀 방식을 짚고 수명·사망 시점은 말하지 마세요.",
-    "annual: 첫 문장은 한자·명리 용어 없이 선택 연도에 살필 생활 상황부터 말하세요. 이어 fortune.annual의 정확한 선택 연도·간지·대운과 원국의 관계를 해석하고, 일·배움, 돈·생활 자원, 가까운 관계에서 확인할 현실 신호를 설명하세요. fortuneYear는 fortune.year, readingVersion은 2입니다. 1월 등 입춘 전 월운은 전년 세운을 쓰므로 각 월의 제공 근거를 우선하세요.",
-    "monthly: fortune.months의 1~12 month를 빠짐없이 같은 순서로 출력하세요. 각 월은 천간 십성, 지장간, 원국 또는 해당 대운·세운과의 합충 중 두 근거를 묶고 그달에 실행할 일 하나와 무리하기 쉬운 조건 하나를 2~3문장으로 쓰세요. 달 이름만 바꾼 복제 문장을 쓰지 마세요.",
-    "overview는 전문용어 없는 생활 문장으로 시작한 뒤 네 기둥의 작용과 월지의 계절 배경을 비교하세요. 원국의 글자를 차례로 열거하는 문장으로 시작하지 마세요. elements는 대표 8자 개수와 지장간을 구분하고, 개수가 고르다고 강약이 균형 잡혔다고 하지 마세요. benefactors는 네 종류의 실제 위치·기준을 쓰고, 없다는 이유로 도움 없이 혼자 살아야 한다고 말하지 마세요.",
-    "periodReadings는 timeline의 각 index를 정확히 한번씩 같은 순서로 작성하세요. theme에는 그 대운의 정확한 기간·간지·십성·원국과의 작용을, strengths/cautions에는 그 조합만의 활용점/부담을, advice에는 관찰할 조건과 행동을 쓰세요. 호환용 reflection 필드에도 질문 대신 그 시기의 해석 또는 조건부 선택 기준을 평서문으로 쓰세요. 대운마다 같은 조언을 반복하지 마세요.",
-    "career, relationships, money는 원국의 성향과 운에서 추가되는 변화를 구분하고, 유리한 방식·실패하기 쉬운 방식·확인할 조건을 3~5문장으로 쓰세요. 특정 직업·혼인·질병·수익을 예언하지 마세요. 19세 이하 구간에는 성인의 직장·투자·계약 조언 대신 배움·가정·또래 관계·생활 자원으로 읽으세요. 근거 없는 건강 진단은 제공하지 마세요.",
-    "상투 문구 '균형을 유지하세요', '유연한 태도가 중요합니다', '좋은 기회가 올 수 있습니다'만으로 문단을 끝내지 마세요. 가령 역할/보상 재협상, 학습 방식 비교, 지출 항목 정리처럼 어떤 상황에서 무엇을 바꿀지 적으세요. 현실 상황의 예시는 가능성/비교 질문이며 사용자의 실제 사건을 아는 것처럼 쓰지 마세요.",
-    "단정하지 않는다는 경고를 각 문장마다 반복하지 말고 caution에서 계산 범위와 해석 한계를 간결하게 한번 설명하세요. 조건부 표현을 쓰되 내용은 구체적으로 쓰세요. AI/Google/Gemini/참고 해석 같은 서비스 표시는 본문에 넣지 마세요. 생성 안내는 별도 화면에 있습니다.",
-    "전체 길이: synthesis 300~600자, lifetime 600~1100자, annual 300~600자, monthly 각 100~220자, 기존 주제 각 250~450자, 대운의 각 필드 70~170자를 목표로 하세요. 모든 필드를 완성하고 자료에 없는 계산값을 만들지 마세요. JSON만 출력하세요.",
-    "계산 자료:\n" + JSON.stringify(context),
+    SAJU_READING_PLAIN_FOUNDATION,
+    "<종합 판단 순서>월령·일간·지장간의 뿌리와 강약 민감도, 격국 후보·조후, 합충, 대운→세운→월운을 먼저 연결하고 마지막에 stars의 귀인·신살을 보조적으로 읽으세요. 격국과 용신의 보류 조건을 유지하세요. 좋은 표지와 부담 신호가 함께 있으면 어느 조건에서 달라지는지 설명하고 개수를 길흉 점수로 합산하지 마세요. synthesis에도 실제 일치한 표지 중 핵심 1~2개가 원국·운의 판단을 어떻게 보완하는지 연결하세요.</종합 판단 순서>",
+    "<귀인·신살>starReading은 원국에 status=matched인 표지를 연결한 종합 풀이입니다. 목록 나열보다 공통 주제와 상반 조건, 생활 실천을 설명하세요. starEvidenceIds에는 원국 matched 표지 ID를 모두 한 번씩 넣으세요. starReading에는 absent/not-applicable 표지 이름과 운에서만 일치한 표지를 언급하지 마세요. flowMatches는 원국 보유와 다르므로 annual에서만 시기를 명시해 보조 설명하세요. 일치 항목이 없으면 ID는 빈 배열로 두고 원국·운 중심으로 읽는다고 설명하세요. 귀인은 자동 보호, 도화는 부정한 관계, 양인은 사고, 화개는 고독으로 단정하지 마세요.</귀인·신살>",
+    `<현재 연령>선택한 해의 사주식 나이는 ${context.age}세입니다. ${context.age < 20 ? "종합·올해·월별·직업·돈·관계 항목은 학교·배움·또래·용돈·생활 준비로만 설명하세요. 성인의 수입·수익·투자·직장·취업·계약을 현재의 일처럼 쓰지 마세요. 평생운과 대운별 해석의 미래 성인 구간은 각 구간 나이에 맞게 구별하세요." : "현재 연령에 맞는 생활 장면을 사용하고 각 대운의 시작·끝 나이도 구별하세요."}</현재 연령>`,
+    "<공통 해석 계획>fortune.interpretationPlan을 종합·연운·직업·관계·돈 풀이의 공통 기준으로 삼으세요. 분야마다 다른 성공 방향을 만들지 말고 opportunity/risk/action을 해당 분야의 상황으로 풀어 쓰세요. 각 시기의 hierarchy는 대운·세운·월운이 이어지거나 달라지는 지점입니다. combination.rule은 원국 조건에 따라 선택한 생활 해석입니다. interpretationBasis.synthesis와 interpretationBasis.annual에 각각 계획의 ruleId와 evidenceIds(필수 ID 모두 포함, facts에 있는 것만)를 넣으세요. 검증용 필드를 본문에 노출하지 마세요.</공통 해석 계획>",
+    "<표현 예시>좋은 방식: '새로운 일을 맡을 때는 익히는 시간과 실제로 해 보는 시간을 나누는 편이 좋겠습니다. 준비만 길어지면 결과를 확인할 기회를 놓칠 수 있습니다.' 근거가 실제로 있을 때만 뒤에 '태어난 달의 배움에 관한 관계와 이번 시기의 표현에 관한 관계를 함께 읽은 풀이입니다.'처럼 덧붙이세요. 나쁜 방식: '편인과 식신이 작용하므로 길합니다.' 예시는 말투를 보여 줄 뿐이며 계산 자료에 없는 관계를 복사하지 마세요.</표현 예시>",
+    "<정확한 시기>lifetime에는 '초년', '청년', '중년', '후반' 네 구간을 모두 쓰고 fortune.lifetime.periods의 실제 연도·나이·대운에 맞추세요. 대운 시작 전에는 없는 간지를 만들지 마세요. annual은 fortune.year의 세운과 해당 대운을 구분하세요. monthly는 fortune.months의 1~12월을 순서대로 쓰고, 각 월의 ganji=월운, annualGanji=세운, daewoonGanji=대운입니다. 각 값과 한글 독음은 제공 자료와 일치해야 합니다. 1월 입춘 전에는 전년도 세운이 적용될 수 있으므로 월별 제공 자료를 우선하세요.</정확한 시기>",
+    "<조합 해석>각 시기의 combination에는 원국의 월령·뿌리·운의 지장간·투간·조후를 함께 본 결과가 있습니다. 같은 십성의 일반론을 반복하지 말고 opportunity/risk/reason에서 이 원국과 시기에 달라지는 핵심을 선택하세요. facts는 내부 근거이며 가중치 수치를 본문에 나열하지 마세요.</조합 해석>",
+    "<항목별 과제>synthesis는 이 사주에서 가장 두드러진 생활 쟁점 두 가지를 원국과 선택한 해의 관계로 읽으세요. overview는 타고난 네 기둥의 차이를 설명하세요. elements는 대표 8글자의 개수와 지장간을 구분하고 단순 개수를 강약 판정으로 바꾸지 마세요. benefactors는 실제 확인된 귀인만 설명하세요. lifetime과 annual은 먼저 생활의 변화, 이어 실제 계산 근거와 달라질 조건을 쓰세요. monthly는 각 월마다 생활 상황과 한 가지 실천을 간결히 쓰세요. career·relationships·money는 원래 성향과 이번 시기의 변화를 구분하세요. 19세 이하에는 성인의 직장·투자·계약 조언을 쓰지 마세요. caution에는 해석의 한계를 한 번만 짧게 쓰세요.</항목별 과제>",
+    "<대운별 항목>periodReadings는 다음 index를 빠짐없이 같은 순서로 작성하세요: " + JSON.stringify(context.timeline.periods.map((p) => p.index)) + ". 각 theme에는 해당 시기의 실제 기간과 관계를, strengths·cautions에는 활용점과 부담을, advice·reflection에는 현실에서 확인할 조건이나 행동을 평서문으로 쓰세요. 같은 조언을 모든 시기에 복사하지 마세요.</대운별 항목>",
+    "<응답 형식>readingVersion=2, fortuneYear=fortune.year입니다. 기존 JSON 형식의 모든 필드와 12개월, " + context.timeline.periods.length + "개 대운 항목을 채우세요. 각 항목의 첫 두 문장은 쉬운 생활 말, 뒤의 한두 문장은 실제 계산 근거가 되게 하세요. 길이를 채우려고 근거를 반복하지 말고 JSON만 출력하세요.</응답 형식>",
+    "<계산 자료>\n" + JSON.stringify(context) + "\n</계산 자료>",
+    "<이번 과제>위 계산 자료만 바탕으로 이번 사람의 사주를 읽기 쉽게 풀이하세요. synthesis·annual·overview·elements·benefactors·career·relationships·money의 첫 두 문장에는 한자나 월지·지장간·십성·원국 같은 말을 쓰지 마세요. 생활 장면과 선택의 조건을 먼저 말하고 세 번째 문장부터 근거를 설명하세요. 응답 전에 연도·간지·대운·세운·월운 명칭이 계산 자료와 맞는지 확인하세요.</이번 과제>",
   ].join("\n\n");
 }
 
 export function validateReadingGrounding(reading: GeminiSajuReading, context: GeminiReadingContext): void {
+  const technicalOpening = /[\u3400-\u9fff]|일간|월지|[년월일시]주|지장간|십성|[대세월]운|신강|신약|격국|용신|귀인|편인|정인|편관|정관|편재|정재|비견|겁재|식신|상관|원국|천간|지지|간지|합충|오행/;
+  const synthesisOpening = reading.synthesis?.split(/[.!?。]/, 1)[0] ?? "";
+  if (technicalOpening.test(synthesisOpening)) {
+    throw new Error("synthesis 첫 문장은 한자·사주 용어 없이 생활에서 보이는 모습으로 다시 쓰세요. 계산 근거는 다음 문장부터 설명하세요.");
+  }
   if (!["초년", "청년", "중년", "후반"].every((stage) => reading.lifetime?.includes(stage))) {
     throw new Error("lifetime에 초년·청년·중년·후반 네 단락을 모두 작성하세요.");
   }
@@ -239,11 +259,18 @@ export function validateReadingGrounding(reading: GeminiSajuReading, context: Ge
   }
 }
 
-export function createGeminiResponseSchema(expectedIndexes: number[]) {
+export function createGeminiResponseSchema(expectedIndexes: number[], plan?: GeminiReadingContext["fortune"]["interpretationPlan"]) {
   return {
     ...geminiReadingResponseSchema,
     properties: {
       ...geminiReadingResponseSchema.properties,
+      interpretationBasis: plan ? {
+        ...interpretationBasisSchema,
+        properties: Object.fromEntries(["synthesis","annual"].map(field => [field, {
+          type:"object",additionalProperties:false,required:["ruleId","evidenceIds"],
+          properties:{ruleId:{type:"string",enum:[plan.ruleId]},evidenceIds:{type:"array",minItems:2,maxItems:2,items:{type:"string",enum:plan.evidenceIds}}},
+        }])),
+      } : interpretationBasisSchema,
       periodReadings: {
         ...geminiReadingResponseSchema.properties.periodReadings,
         minItems: expectedIndexes.length,

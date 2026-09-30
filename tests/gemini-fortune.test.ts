@@ -6,7 +6,7 @@ import { calculateBenefactors } from "../lib/saju/benefactors";
 import { createGeminiReadingContext, createGeminiReadingPrompt, createGeminiResponseSchema, validateGeminiSajuReading, validateReadingGrounding } from "../lib/saju/gemini-reading";
 import { koreanGanji } from "../lib/saju/fortune";
 
-const sentence = "계산된 간지와 십성의 관계를 실제 경험 및 선택 조건과 연결합니다.";
+const sentence = "익힌 것을 실제로 써 볼 때 방향을 잡기 쉽겠습니다. 다만 준비만 길어지면 결과를 확인할 기회를 놓칠 수 있습니다. 계산된 간지와 십성의 관계를 살펴본 풀이입니다.";
 const latest = {
   readingVersion: 2 as const,
   fortuneYear: 2026,
@@ -52,6 +52,23 @@ test("월별 간지의 대운·세운·월운 이름이 계산 자료와 일치�
   assert.equal(context.fortune.months[0].annualGanji, "乙巳");
   assert.equal(context.fortune.months[1].annualGanji, "丙午");
   assert.doesNotThrow(() => validateReadingGrounding(reading, context));
+});
+
+test("종합 한줄평의 첫 문장은 쉬운 생활말로 시작하고 뒤의 계산 근거는 허용한다", () => {
+  const { context, reading } = groundedFixture();
+  assert.doesNotThrow(() => validateReadingGrounding(reading, context));
+
+  for (const invalid of [
+    "타고난 월지 未의 주된 지장간은 이렇게 나타납니다. 익힌 것을 써 볼 때 방향이 보입니다.",
+    "식신과 정재의 관계가 뚜렷합니다. 익힌 것을 써 볼 때 방향이 보입니다.",
+  ]) {
+    assert.throws(() => validateReadingGrounding({ ...reading, synthesis: invalid }, context), invalid);
+  }
+
+  assert.doesNotThrow(() => validateReadingGrounding({ ...reading,
+    synthesis: "익힌 것을 써 볼 때 방향이 보입니다. 식신과 정재의 관계를 근거로 살펴본 풀이입니다.",
+    annual: "월지 未의 흐름을 설명합니다. 익힌 것을 써 볼 때 방향이 보입니다.",
+  }, context));
 });
 
 test("AI가 월운 간지를 대운이라고 부르거나 입춘 전 세운을 올해 간지로 쓰면 거부한다", () => {
@@ -130,7 +147,7 @@ test("AI 계산 자료는 선택 연도·지장간·합충을 포함하고 원�
   assert.ok(!serialized.includes(String(input.birthplace!.longitude)));
   const prompt = createGeminiReadingPrompt(context);
   assert.match(prompt, /한글 독음/);
-  assert.match(prompt, /최소 두 근거/);
-  assert.match(prompt, /다른 사주에도 그대로 적용될 문장/);
-  assert.match(prompt, /실제 인간 경력을 사칭하지/);
+  assert.match(prompt, /계산 자료의 간지·연도·십성·합충만 사용/);
+  assert.match(prompt, /계산 근거/);
+  assert.match(prompt, /실제 상담 경력이나 이용자의 과거를 알고 있는 것처럼 말하지/);
 });

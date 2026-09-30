@@ -42,10 +42,10 @@ const branchElements = ["수", "토", "목", "목", "토", "화", "화", "토", 
 const stems = [..."甲乙丙丁戊己庚辛壬癸"];
 const branches = [..."子丑寅卯辰巳午未申酉戌亥"];
 const pillarRoles: Record<string, string> = {
-  년주: "전통적으로 초년의 바탕과 집안·바깥 환경을 돌아보는 자리",
-  월주: "성장 환경과 사회에서 맡는 역할, 계절 기운을 살펴보는 자리",
-  일주: "나 자신을 중심에 두고 가까운 관계를 함께 돌아보는 자리",
-  시주: "앞으로 기르고 싶은 일과 장기 계획을 비춰보는 자리",
+  년주: "어린 시절의 환경과 오래 이어지는 관계를 읽는 자리",
+  월주: "배우고 사회에 나가는 방식의 바탕을 읽는 자리",
+  일주: "나의 기준과 가까운 관계를 함께 읽는 자리",
+  시주: "앞으로 키울 일과 긴 계획을 읽는 자리",
 };
 
 function periodElement(period?: DaewoonPeriod): string {
@@ -111,7 +111,7 @@ export function buildLocalReading(
   };
 
   return {
-    overview: `일간은 ${chart.dayMaster.korean}${dayElement}, 월지는 ${chart.pillars[1].branch}(${monthElement})입니다. ${seasonRelationship}. 보이는 여덟 글자의 오행은 ${counts.present}이며, 보이지 않는 오행은 ${counts.absent}입니다. 이 숫자만으로 좋고 나쁨이나 사주의 강약을 결론 낼 수는 없습니다.`,
+    overview: `일간은 ${chart.dayMaster.korean}${dayElement}, 월지는 ${chart.pillars[1].branch}(${monthElement})입니다. ${seasonRelationship}. 보이는 여덟 글자의 오행은 ${counts.present}이며, 보이지 않는 오행은 ${counts.absent}입니다.`,
     pillarReadings: chart.pillars.map((pillar) => {
       const stemName = pillar.korean[0];
       const branchName = pillar.korean[1];
@@ -122,7 +122,7 @@ export function buildLocalReading(
         hanja: pillar.text,
         korean: pillar.korean,
         characterGloss: `${pillar.stem}(${stemName}·${stemElement}) · ${pillar.branch}(${branchName}·${branchElement})`,
-        interpretation: `${pillarRoles[pillar.label]}입니다. 천간 ${pillar.stem}(${stemName}, ${stemElement})은 일간과의 관계에서 ${relationship(dayElement, stemElement)}. 지지 ${pillar.branch}(${branchName}, ${branchElement})는 ${relationship(dayElement, branchElement)}. 이 전통적 자리는 실제 성격이나 사건을 확정하는 표가 아니라, 해당 분야에서 반복된 경험을 돌아보는 관점입니다.`,
+        interpretation: `${pillarRoles[pillar.label]}입니다. 천간 ${pillar.stem}(${stemName}, ${stemElement})은 일간과의 관계에서 ${relationship(dayElement, stemElement)}. 지지 ${pillar.branch}(${branchName}, ${branchElement})는 ${relationship(dayElement, branchElement)}.`,
       };
     }),
     past: describe(past, "대운 시작 전 구간은 당시 양육·학습·생활 환경과 함께 돌아봅니다."),

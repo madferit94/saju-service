@@ -10,7 +10,7 @@ import { buildFortuneReport } from "../lib/saju/fortune";
 const adult: SajuInput = { date: "1994-12-01", time: "08:37", calendar: "solar", topic: "general" };
 const expectedAdultTitles = [
   "직업운", "학업·시험운", "재물운", "사업·활동운", "연애운", "배우자·동반자운",
-  "자녀·다음 세대운", "가족·부모운", "친구·협업운", "건강·생활 균형운", "이동·주거운",
+  "자녀·다음 세대운", "가족·부모운", "친구·협업운", "생활 균형운", "이동·주거운",
 ];
 
 function reportFor(input: SajuInput, year = 2026) {
@@ -32,6 +32,7 @@ test("성인은 생활의 11개 운을 별도 카드로 읽고 카드마다 계�
     assert.ok(domain.interpretation.includes(report.annual.stemGod), `${domain.title}: 해석에 선택 연도 십성이 없습니다`);
     assert.ok(domain.interpretation.includes(pillars[sourcePillar[domain.id]].text), `${domain.title}: 원국의 해당 기둥이 해석에 없습니다`);
     assert.ok(domain.evidence.some((line) => line.includes(report.annual.ganji)), `${domain.title}: 선택 연도 흐름의 근거가 없습니다`);
+    assert.doesNotMatch(domain.body + " " + domain.interpretation, /공인 점수|비교 지표|판정 보류|조건부 후보|판단할 수 없|예언하지|뜻하지|보장하지|확정할 수 없|표시는 아닙니다|근거는 아닙니다/, `${domain.title}: 중복 안내 문장`);
   }
 });
 
@@ -67,6 +68,7 @@ test("미성년 결과는 배움과 생활 관계에 맞추며 혼인·임신·�
   assert.doesNotMatch(titles.join(" "), /연애|배우자|자녀|직업|사업|투자/);
   const guidance = report.domains.map((domain) => domain.body + " " + domain.interpretation).join(" ");
   assert.doesNotMatch(guidance, /결혼할|임신할|투자할|취업할|창업할|배우자를 만날|자녀를 낳을/);
+  assert.doesNotMatch(guidance, /공인 점수|비교 지표|판정 보류|조건부 후보|판단할 수 없|예언하지|뜻하지|보장하지|확정할 수 없|근거는 아닙니다/);
   for (const domain of report.domains) {
     assert.ok(domain.interpretation.includes(report.annual.ganji), `${domain.title}: 선택 연도 간지가 없습니다`);
     assert.ok(domain.interpretation.includes(report.annual.stemGod), `${domain.title}: 선택 연도 십성이 없습니다`);

@@ -1,5 +1,5 @@
 import type { SajuChart } from "./chart";
-import { tenGod } from "./fortune";
+import { tenGod } from "./ten-gods";
 
 export const ANALYSIS_VERSION = 1 as const;
 const stems = [..."甲乙丙丁戊己庚辛壬癸"];

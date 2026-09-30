@@ -113,8 +113,7 @@ export default function AccountPanel({ current, busy, onLoad, onClearCloud }: Pr
         if (!isCurrent()) return;
         onLoad(payload); setOpenedId(id);
         setTitle(rows.find(row => row.id === id)?.title ?? "나의 사주 흐름");
-        setMessage("저장한 결과를 열었습니다. 아래에서 해석을 확인하세요.");
-        document.getElementById("result-title")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setMessage("저장한 결과를 열었습니다. 사주표 화면에서 해석을 확인하세요.");
         return;
       } else if (action === "delete" && id) {
         await deleteReading(client, user.id, id);

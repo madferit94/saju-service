@@ -1,5 +1,13 @@
 # Status
 
+- [x] 043-stars-integrated-reading.md — 귀인·신살 확장, 클릭 상세와 종합 해석
+
+- [x] 042-contextual-reading-quality.md — 조합별 생활 해석·시기 연결·AI 내용 검증 (독립 262개 테스트·빌드·성인/미성년 실응답 검증)
+
+- [x] 039-combined-flow-reading.md — 원국과 시기의 조합 해석 (독립 테스트·로컬 실응답 검증)
+- [x] 040-combined-life-flow.md — 균형 변화 그래프와 현재 계절 보강 (독립 테스트·로컬 화면 검증)
+- [x] 041-progressive-ai-reading.md — AI 핵심 요약 선표시·부분 재시도·세션 재사용 (전체 246개 테스트·빌드·로컬 성공/실패/재시도 검증)
+
 - [x] `013-deep-consultation.md` 강약·격국·용신 근거와 8장 상담형 풀이 · 자동118개/가상 실응답 확인
 
 - [ ] `011-google-login.md` 구현·인증 페이지 연결 완료 · 실제 계정 로그인/로그아웃 확인 대기
@@ -58,3 +66,16 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] 030-default-korea-country.md — 출생 국가는 대한민국 기본값, 다른 나라 선택 가능 (로컬 검증, 참가자 확인 전)
 
 - [x] 031-direct-saju-language.md — 결과 화면의 계산 상태 표현을 사주 풀이 문장으로 변경 (로컬 검증, 참가자 확인 전)
+
+- [x] 032-doryeong-one-line.md — 사주 계산 결과 맨 앞의 도령 한줄평 (로컬 검증, 참가자 확인 전)
+
+- [x] 033-doryeong-share-card.md — 한줄평만 담은 이미지 카드 저장·공유 (로컬 검증, 실제 기기 확인 전)
+
+- [x] 034-result-pages.md — 결과 메뉴를 항목별 화면 전환으로 변경 (로컬 검증, 참가자 확인 전)
+
+- [x] 035-plain-grounded-gemini-prompt.md — 쉬운 말과 계산 근거에 맞는 Gemini 풀이 초안 적용 (자동 검증, 참가자 화면 확인 전)
+
+- [x] 036-direct-balance-reading.md — 균형·도움의 중복 안내 제거와 계산 근거를 살린 직접 풀이 (로컬 검증, 참가자 확인 전)
+
+- [x] 037-one-step-gemini-reading.md — 출생 입력 한 번으로 Gemini 해석 추가 (자동 검사·로컬 화면 확인, 참가자 확인 전)
+- [x] 038-single-saju-entry.md — 하나의 “내 사주 보기” 버튼으로 계산과 AI 풀이 시작 (자동 검사 완료, 화면 확인 전)
