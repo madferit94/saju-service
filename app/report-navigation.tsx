@@ -14,7 +14,7 @@ export default function ReportNavigation({ activePage, onNavigate }: {
   }
 
   return <nav className="result-page-nav" aria-label="사주 결과 항목">
-    <div className="result-page-nav-heading"><strong>내 사주 읽기</strong><a href="?view=input" onClick={(event) => follow(event, "input")} aria-current={activePage === "input" ? "page" : undefined}>출생 정보·보관함</a></div>
+    <div className="result-page-nav-heading"><strong><span className="journey-lantern-mark" aria-hidden="true">✦</span> 내 사주 읽기</strong><a href="?view=input" onClick={(event) => follow(event, "input")} aria-current={activePage === "input" ? "page" : undefined}>출생 정보·보관함</a></div>
     <div className="result-page-nav-list">
       {reportPages.map((page) => <a key={page.id} href={`?view=${page.id}`} onClick={(event) => follow(event, page.id)} aria-current={activePage === page.id ? "page" : undefined}>{page.label}</a>)}
     </div>

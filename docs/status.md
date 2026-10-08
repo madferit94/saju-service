@@ -1,5 +1,7 @@
 # Status
 
+- [ ] 044-lantern-journey-theme.md — 등불 첫 화면·결과 테마 및 v0.3.0 배포
+
 - [x] 043-stars-integrated-reading.md — 귀인·신살 확장, 클릭 상세와 종합 해석
 
 - [x] 042-contextual-reading-quality.md — 조합별 생활 해석·시기 연결·AI 내용 검증 (독립 262개 테스트·빌드·성인/미성년 실응답 검증)

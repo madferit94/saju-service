@@ -49,14 +49,24 @@ export async function renderDoryeongCard(line: string): Promise<Blob> {
     context.fill();
   }
 
-  const trail = context.createLinearGradient(660, 170, 930, 72);
-  trail.addColorStop(0, "#f8e6ac00");
-  trail.addColorStop(1, "#f8e6acca");
-  context.strokeStyle = trail;
-  context.lineWidth = 5;
+  // An illuminated path and lantern echo the landing artwork without loading private data.
+  context.strokeStyle = "#e8bd72";
+  context.lineWidth = 4;
   context.beginPath();
-  context.moveTo(660, 170);
-  context.lineTo(930, 72);
+  context.moveTo(190, 1170);
+  context.lineTo(380, 1100);
+  context.lineTo(710, 1090);
+  context.lineTo(900, 1030);
+  context.stroke();
+  context.fillStyle = "#efcd8b";
+  context.fillRect(810, 110, 68, 82);
+  context.strokeStyle = "#a8783d";
+  context.lineWidth = 5;
+  context.strokeRect(810, 110, 68, 82);
+  context.beginPath();
+  context.moveTo(800, 110);
+  context.lineTo(844, 86);
+  context.lineTo(888, 110);
   context.stroke();
 
   context.strokeStyle = "#d9c99588";
@@ -68,7 +78,7 @@ export async function renderDoryeongCard(line: string): Promise<Blob> {
   context.textAlign = "center";
   context.fillStyle = "#e7d7ab";
   context.font = "700 33px sans-serif";
-  context.fillText("별빛 도령의 한마디", 540, 238);
+  context.fillText("내 길을 비추는 한마디", 540, 238);
 
   context.fillStyle = "#fff9ec";
   context.font = '700 62px "Batang", Georgia, serif';

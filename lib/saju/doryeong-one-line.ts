@@ -16,11 +16,11 @@ const theme: Record<string, string> = {
 };
 
 function direction(self: Element, month: Element): string {
-  if (self === month) return "함께할 사람과 기준을 맞추시오";
-  if (generates[month] === self) return "배운 것을 자기 것으로 만드시오";
-  if (controls[month] === self) return "맡은 책임의 범위를 먼저 정하시오";
-  if (generates[self] === month) return "생각을 작은 결과로 내놓으시오";
-  return "생활의 기준에 맞춰 써보시오";
+  if (self === month) return "함께할 사람과 기준을 맞춰보세요";
+  if (generates[month] === self) return "배운 것을 자기 것으로 만들어보세요";
+  if (controls[month] === self) return "맡은 책임의 범위를 먼저 정해보세요";
+  if (generates[self] === month) return "생각을 작은 결과로 내놓아보세요";
+  return "생활의 기준에 맞춰 써보세요";
 }
 
 export function buildDoryeongOneLine(chart: SajuChart) {
@@ -28,7 +28,7 @@ export function buildDoryeongOneLine(chart: SajuChart) {
   const self = chart.dayMaster.element as Element;
   const month = monthPillar.branchElement as Element;
   const monthGod = tenGod(chart.dayMaster.character, monthPillar.stem);
-  const line = `${image[self]}의 기운이 ${image[month]}의 달을 만났으니, ${theme[monthGod]} ${direction(self, month)}.`;
+  const line = `${image[self]}의 기운이 ${image[month]}의 달을 만났습니다. ${theme[monthGod]} ${direction(self, month)}.`;
   const basis = `태어난 날 ${chart.dayMaster.character}(${chart.dayMaster.korean}·${self}), 태어난 달 ${monthPillar.branch}(${monthPillar.korean[1]}·${month})와 ${monthPillar.stem}(${monthPillar.korean[0]}·${monthGod})을 함께 읽었습니다.`;
   return { line, basis };
 }

@@ -15,7 +15,7 @@ export default function DoryeongShareCard({ line }: { line: string }) {
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = "도령의-사주-한줄평.png";
+      link.download = "등불의-사주-한줄평.png";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -40,13 +40,13 @@ export default function DoryeongShareCard({ line }: { line: string }) {
         if (navigator.canShare) {
           try {
             const blob = await renderDoryeongCard(line);
-            const file = new File([blob], "도령의-사주-한줄평.png", { type: "image/png" });
+            const file = new File([blob], "등불의-사주-한줄평.png", { type: "image/png" });
             if (navigator.canShare({ files: [file] })) files = [file];
           } catch {
             // 이미지 공유가 안 되는 기기에서는 문장과 주소를 공유합니다.
           }
         }
-        await navigator.share({ title: "도령의 사주 한줄평", text: `“${line}”\n\n나도 내 사주 한줄평 보기`, url, ...(files ? { files } : {}) });
+        await navigator.share({ title: "내 길을 비추는 한마디", text: `“${line}”\n\n나도 내 사주 한줄평 보기`, url, ...(files ? { files } : {}) });
         setMessage("공유 창을 열었습니다.");
         return;
       }
@@ -64,9 +64,9 @@ export default function DoryeongShareCard({ line }: { line: string }) {
   }
 
   return (
-    <section className="doryeong-share" aria-label="도령 한줄평 공유 카드">
+    <section className="doryeong-share" aria-label="등불 한줄평 공유 카드">
       <div className="doryeong-share-preview" aria-label={`공유 카드 미리보기: ${line}`}>
-        <span className="doryeong-share-heading">별빛 도령의 한마디</span>
+        <span className="doryeong-share-heading">내 길을 비추는 한마디</span>
         <p>“{line}”</p>
         <span className="doryeong-share-brand">나의 대운, 나의 시간</span>
       </div>

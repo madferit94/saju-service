@@ -1296,3 +1296,47 @@ button.star-chip[aria-pressed="true"] { outline:2px solid currentColor; outline-
 .star-rule { font-size:.85rem; opacity:.8; }
 .star-guidance { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
 @media(max-width:640px) { .star-guidance { grid-template-columns:1fr; gap:0; } .star-detail { padding:18px; } .star-chips { gap:10px; } }
+
+/* Spec044: the lantern lights the journey; long readings stay on warm paper. */
+:root { --background:#081426; --surface:#fffdf8; --text:#243249; --muted:#546075; --border:#ddd7ca; --primary:#725027; --soft:#f7f0e2; --focus:#ab6b17; }
+body { background:radial-gradient(ellipse at 85% 0%,#263a55 0,transparent 45%),linear-gradient(180deg,#09172b,#102139 55%,#091426); }
+body::before { opacity:.18; }
+main { width:min(100%,1120px); }
+.input-card { width:min(100%,920px); margin-inline:auto; }
+.page-header.journey-hero { isolation:isolate; min-height:520px; display:flex; align-items:center; text-align:left; padding:64px 60px; border:1px solid #e3c38c30; border-radius:24px; margin-bottom:32px; background:#081426; }
+.page-header.journey-hero::before { content:""; inset:0; width:auto; height:auto; border-radius:0; box-shadow:none; opacity:1; background:linear-gradient(90deg,#071426c9 0%,#0714268c 40%,transparent 75%); z-index:1; }
+.page-header.journey-hero::after { content:none; animation:none; }
+.page-header .journey-hero-image { z-index:0; object-fit:cover; object-position:center; }
+.page-header .journey-hero-content { z-index:2; max-width:590px; }
+.journey-hero .eyebrow { font-size:13px; color:#f3d5a2; letter-spacing:.14em; }
+.journey-hero h1 { font-family:Georgia,"Batang",serif; font-weight:500; font-size:clamp(36px,5vw,58px); line-height:1.3; text-shadow:0 2px 20px #061125; }
+.journey-hero .intro { margin:22px 0 28px; max-width:460px; color:#f0ede6; font-size:17px; line-height:1.85; }
+.journey-start { display:inline-flex; align-items:center; justify-content:space-between; gap:40px; padding:14px 24px; min-height:52px; border:1px solid #f8d898; border-radius:10px; background:#f3d39a; color:#17263d; font-weight:750; text-decoration:none; transition:background .18s; }
+.journey-start:hover { background:#ffe4b5; }
+.journey-start:focus-visible { outline:3px solid #fff; outline-offset:5px; }
+.journey-caption { color:#e4d7bd; font-size:12px; margin:14px 0 0; letter-spacing:.03em; }
+.journey-footer { padding:32px 16px 8px; text-align:center; color:#d9cfbd; font-size:13px; }
+.journey-lantern-mark { color:#a46c25; margin-right:5px; }
+.result-page-nav { background:#fffcf5; border-color:#ddd1b9; }
+.result-page-nav-list a[aria-current="page"] { background:#f3e6cd; color:#60431d; border-color:#c9ac7d; }
+.input-card,.account-panel,.result,.reading-result,.flow-overview,.life-seasons,.life-graph-panel,.fortune-panel,.deep-analysis,.consultation-panel { border-color:#ddd7ca; }
+.account-panel,.manse-table thead,.deep-analysis-grid > article,.consultation-toc a,.consultation-action,.chapter-summary,.current-reading-guide { background:#f8f4eb; }
+.doryeong-one-line { border-color:#dfcda9; background:linear-gradient(135deg,#fffcf5,#f7edd9); border-left:3px solid #b48136; }
+.doryeong-one-line-label { color:#765323; }
+.doryeong-share-preview { background:linear-gradient(180deg,#0b1b30d9,#0b1b30d9),url('/images/lantern-journey.webp') center/cover; border-color:#c8ab75; }
+.life-path.graph-flow { stroke:#8b612c; }
+.graph-flow-point { fill:#8b612c; }
+.graph-peak-point { fill:#bb7b23; }
+.life-graph-highlight,.life-graph-periods article.graph-current-period { background:#faf3e4; border-color:#d7bc8e; }
+.life-graph-wrap,.life-graph-periods article,.life-period { background:#fffdf7; }
+.current-badge { background:#f0dfbd; color:#65441b; }
+@media(max-width:700px) {
+  .page-header.journey-hero { min-height:570px; padding:36px 24px 210px; border-radius:18px; align-items:flex-start; margin-bottom:20px; }
+  .page-header .journey-hero-image { object-position:82% center; }
+  .page-header.journey-hero::before { background:linear-gradient(180deg,#071426e6 0%,#071426c2 38%,#07142622 72%,transparent 100%); }
+  .journey-hero h1 { font-size:clamp(32px,8.8vw,43px); }
+  .journey-hero .intro { font-size:15px; margin:18px 0 22px; }
+  .journey-start { padding:13px 22px; }
+  .journey-caption { font-size:11px; }
+}
+@media(prefers-reduced-motion:reduce) { .journey-start { transition:none; } }
