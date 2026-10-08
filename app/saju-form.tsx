@@ -385,7 +385,7 @@ export default function SajuForm() {
       <div className="input-entry" hidden={Boolean(chart && activePage !== "input")}>
       <AccountPanel current={cloudPayload} busy={isGenerating} onLoad={loadCloudResult} onClearCloud={clearCloudResult} />
       <h2 id="input-title">언제 태어나셨나요?</h2>
-      <p className="form-intro">출생 정보를 입력하면 나에게 맞는 대운의 시간표를 볼 수 있습니다.</p>
+      <p className="form-intro">태어난 순간을 바탕으로 나의 흐름과 앞으로의 선택을 함께 살펴볼게요.</p>
       <form onSubmit={handleSubmit}>
         <label htmlFor="calendar">날짜 기준</label>
         <select id="calendar" value={calendar} onChange={(event) => {
@@ -521,8 +521,8 @@ export default function SajuForm() {
               일간은 {chart.dayMaster.korean}
               {chart.dayMaster.element}({chart.dayMaster.character})입니다.
             </p>
-            {doryeongOneLine && <div className="doryeong-one-line" aria-label="도령의 사주 한줄평">
-              <p className="doryeong-one-line-label">도령의 사주 한줄평</p>
+            {doryeongOneLine && <div className="doryeong-one-line" aria-label="내 길을 비추는 한마디">
+              <p className="doryeong-one-line-label">내 길을 비추는 한마디</p>
               <p className="doryeong-one-line-quote">“{doryeongOneLine.line}”</p>
               <p className="doryeong-one-line-basis">{doryeongOneLine.basis}</p>
               <DoryeongShareCard line={doryeongOneLine.line} />

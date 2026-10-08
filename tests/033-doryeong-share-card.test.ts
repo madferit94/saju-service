@@ -54,7 +54,7 @@ test("PNG 카드에는 한줄평과 공개 표제만 그려지고 출생 정보�
     assert.equal(blob.type, "image/png");
     assert.equal(canvas.width, 1080);
     assert.equal(canvas.height, 1350);
-    assert.match(printed, /별빛 도령의 한마디/u);
+    assert.match(printed, /내 길을 비추는 한마디/u);
     assert.match(printed, /나의 대운, 나의 시간/u);
     assert.ok(printed.replace(/\s/gu, "").includes(line.replace(/\s/gu, "")), "이미지에 실제 한줄평을 넣어야 합니다");
     assert.doesNotMatch(printed, /2005-12-23|08:37|서울|출생지|생년월일|월주|일주|시주/u);
