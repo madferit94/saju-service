@@ -1,6 +1,6 @@
 # Status
 
-- [ ] 044-lantern-journey-theme.md — 등불 첫 화면·결과 테마 및 v0.3.0 배포
+- [ ] 044-lantern-journey-theme.md — 등불 테마 v0.3.0 구현·병합·운영 배포 완료 / 브라우저 실행기 오류로 시각·모바일 확인 대기
 
 - [x] 043-stars-integrated-reading.md — 귀인·신살 확장, 클릭 상세와 종합 해석
 
