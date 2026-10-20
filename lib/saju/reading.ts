@@ -37,10 +37,6 @@ type Element = keyof SajuChart["elements"];
 const elementOrder: Element[] = ["목", "화", "토", "금", "수"];
 const generates: Record<Element, Element> = { 목: "화", 화: "토", 토: "금", 금: "수", 수: "목" };
 const controls: Record<Element, Element> = { 목: "토", 화: "금", 토: "수", 금: "목", 수: "화" };
-const stemElements = ["목", "목", "화", "화", "토", "토", "금", "금", "수", "수"] as const;
-const branchElements = ["수", "토", "목", "목", "토", "화", "화", "토", "금", "금", "토", "수"] as const;
-const stems = [..."甲乙丙丁戊己庚辛壬癸"];
-const branches = [..."子丑寅卯辰巳午未申酉戌亥"];
 const pillarRoles: Record<string, string> = {
   년주: "어린 시절의 환경과 오래 이어지는 관계를 읽는 자리",
   월주: "배우고 사회에 나가는 방식의 바탕을 읽는 자리",
@@ -59,13 +55,6 @@ function relationship(day: Element, other: Element): string {
   if (controls[other] === day) return "규칙과 책임이 성장을 밀어줄 수 있으나 압박도 커질 수 있습니다";
   if (generates[day] === other) return "표현과 결과물을 내기 좋지만 에너지 소모를 함께 살펴야 합니다";
   return "성과와 관리에 눈이 갈 수 있으나 통제하려는 마음이 부담이 될 수 있습니다";
-}
-
-function periodContext(period: DaewoonPeriod | undefined, dayElement: Element): string {
-  if (!period?.ganji) return "";
-  const stem = stemElements[stems.indexOf(period.ganji[0])];
-  const branch = branchElements[branches.indexOf(period.ganji[1])];
-  return `대운 천간의 오행은 ${stem}입니다. 일간과 비교하면 ${relationship(dayElement, stem)}. 지지의 대표 오행은 ${branch}입니다. 지지와 일간의 관계에서는 ${relationship(dayElement, branch)}.`;
 }
 
 function mix(counts: SajuChart["elements"]): { present: string; absent: string } {

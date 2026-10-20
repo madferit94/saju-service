@@ -90,6 +90,8 @@ export default function SajuForm() {
   const readingSession = useRef(new ReadingSession());
   const [summary, setSummary] = useState<ReadingSummary | null>(null);
   const [readingPhase, setReadingPhase] = useState<"summary" | "full">("summary");
+  const [pageFocusRequest, setPageFocusRequest] = useState(0);
+  const serviceRef = useRef<HTMLElement>(null);
   const localReading = useMemo(() => chart && timeline ? buildLocalReading(chart, timeline, benefactors) : null, [chart, timeline, benefactors]);
   const fortune = useMemo(() => chart && timeline ? buildFortuneReport(chart, timeline, fortuneYear) : null, [chart, timeline, fortuneYear]);
   const visibleReading = reading?.readingVersion === 2 && reading.analysisVersion === 1 && reading.fortuneYear === fortuneYear ? reading : null;
@@ -107,6 +109,7 @@ export default function SajuForm() {
     const nextUrl = reportPageUrl(new URL(window.location.href), page);
     window.history.pushState(null, "", nextUrl);
     setActivePage(page);
+    setPageFocusRequest((count) => count + 1);
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
@@ -187,6 +190,21 @@ export default function SajuForm() {
     }, 250);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [countryCode, cityQuery, birthplace]);
+
+  // 화면을 바꾼 뒤 새 화면의 제목으로 초점을 옮겨 키보드·스크린리더 이용자가 바뀐 내용을 바로 알 수 있게 한다.
+  useEffect(() => {
+    if (pageFocusRequest === 0) return;
+    const root = serviceRef.current;
+    if (!root) return;
+    const heading = activePage === "input"
+      ? root.querySelector<HTMLElement>("#input-title")
+      : activePage === "chart"
+        ? root.querySelector<HTMLElement>("#result-title")
+        : Array.from(root.querySelectorAll<HTMLElement>("h2")).find((element) => !element.closest(".input-entry, nav"));
+    if (!heading) return;
+    if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+  }, [pageFocusRequest, activePage]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -381,10 +399,10 @@ export default function SajuForm() {
   }
 
   return (
-    <section className={`input-card${chart && activePage !== "input" ? " report-mode" : ""}`} aria-label="사주 서비스">
+    <section ref={serviceRef} className={`input-card${chart && activePage !== "input" ? " report-mode" : ""}`} aria-label="사주 서비스">
       <div className="input-entry" hidden={Boolean(chart && activePage !== "input")}>
       <AccountPanel current={cloudPayload} busy={isGenerating} onLoad={loadCloudResult} onClearCloud={clearCloudResult} />
-      <h2 id="input-title">언제 태어나셨나요?</h2>
+      <h2 id="input-title" tabIndex={-1}>언제 태어나셨나요?</h2>
       <p className="form-intro">태어난 순간을 바탕으로 나의 흐름과 앞으로의 선택을 함께 살펴볼게요.</p>
       <form onSubmit={handleSubmit}>
         <label htmlFor="calendar">날짜 기준</label>
@@ -455,14 +473,16 @@ export default function SajuForm() {
         {cityLoading && !birthplace && <p className="method-help">도시를 찾고 있습니다…</p>}
         {citySearched && cityMatches.length === 0 && !birthplace && <p className="method-help">일치하는 도시가 없습니다. 영문 이름을 확인해 주세요.</p>}
         {cityMatches.length > 0 && !birthplace && (
-          <div className="city-matches" role="listbox" aria-label="도시 검색 결과">
+          <ul className="city-matches" aria-label="도시 검색 결과">
             {cityMatches.map((city, index) => (
-              <button type="button" role="option" aria-selected="false" key={`${city.city}-${city.province}-${index}`}
-                onClick={() => { setBirthplace(city); setCityQuery(`${city.city}${city.province ? `, ${city.province}` : ""}`); setCityMatches([]); }}>
-                {city.city}{city.province ? `, ${city.province}` : ""} · {city.timezone}
-              </button>
+              <li key={`${city.city}-${city.province}-${index}`}>
+                <button type="button"
+                  onClick={() => { setBirthplace(city); setCityQuery(`${city.city}${city.province ? `, ${city.province}` : ""}`); setCityMatches([]); }}>
+                  {city.city}{city.province ? `, ${city.province}` : ""} · {city.timezone}
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
         {birthplace && <p className="selected-city">선택: {birthplace.countryName} · {birthplace.city} · {birthplace.timezone}</p>}
         {locationError && <p className="error" role="alert">{locationError}</p>}
@@ -514,14 +534,14 @@ export default function SajuForm() {
           <section className="result chart-result" aria-labelledby="result-title">
             {resultSource === "cloud" && <p className="method-help">계정에서 불러온 결과입니다. 새 해석을 만들면 보관함의 ‘계정에 저장’을 눌러 새 기록으로 남겨 주세요.</p>}
             <p className="result-label">계산 결과</p>
-            <h2 id="result-title" className="day-pillar">
+            <h2 id="result-title" className="day-pillar" tabIndex={-1}>
               {chart.pillars[2].korean}일주
             </h2>
             <p className="day-master">
               일간은 {chart.dayMaster.korean}
               {chart.dayMaster.element}({chart.dayMaster.character})입니다.
             </p>
-            {doryeongOneLine && <div className="doryeong-one-line" aria-label="내 길을 비추는 한마디">
+            {doryeongOneLine && <div className="doryeong-one-line" role="group" aria-label="내 길을 비추는 한마디">
               <p className="doryeong-one-line-label">내 길을 비추는 한마디</p>
               <p className="doryeong-one-line-quote">“{doryeongOneLine.line}”</p>
               <p className="doryeong-one-line-basis">{doryeongOneLine.basis}</p>

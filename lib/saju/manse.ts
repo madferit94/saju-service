@@ -1,6 +1,6 @@
 import lunar from "lunar-javascript";
 import type { SajuChart } from "./chart";
-import { analyzeFlow, koreanGanji, tenGod } from "./fortune";
+import { analyzeFlow, koreanGanji } from "./fortune";
 
 const stems = [..."甲乙丙丁戊己庚辛壬癸"];
 const branches = [..."子丑寅卯辰巳午未申酉戌亥"];
