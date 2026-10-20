@@ -9,6 +9,7 @@ import {
 } from "../lib/saju/chart";
 import {
   calculateDaewoon,
+  timelineForYear,
   type DaewoonTimeline,
   type PeriodStatus,
 } from "../lib/saju/daewoon";
@@ -92,13 +93,16 @@ export default function SajuForm() {
   const [readingPhase, setReadingPhase] = useState<"summary" | "full">("summary");
   const [pageFocusRequest, setPageFocusRequest] = useState(0);
   const serviceRef = useRef<HTMLElement>(null);
-  const localReading = useMemo(() => chart && timeline ? buildLocalReading(chart, timeline, benefactors) : null, [chart, timeline, benefactors]);
-  const fortune = useMemo(() => chart && timeline ? buildFortuneReport(chart, timeline, fortuneYear) : null, [chart, timeline, fortuneYear]);
+  // 저장된 결과는 계산한 해의 기준으로 남아 있으므로, 화면에서는 올해 기준으로 과거·현재·미래를 다시 나눈다.
+  // 저장·계정 보관·AI 요청에는 원래 timeline을 그대로 사용한다.
+  const displayTimeline = useMemo(() => timeline ? timelineForYear(timeline, new Date().getFullYear()) : null, [timeline]);
+  const localReading = useMemo(() => chart && displayTimeline ? buildLocalReading(chart, displayTimeline, benefactors) : null, [chart, displayTimeline, benefactors]);
+  const fortune = useMemo(() => chart && displayTimeline ? buildFortuneReport(chart, displayTimeline, fortuneYear) : null, [chart, displayTimeline, fortuneYear]);
   const visibleReading = reading?.readingVersion === 2 && reading.analysisVersion === 1 && reading.fortuneYear === fortuneYear ? reading : null;
   const deepAnalysis = useMemo(() => chart ? analyzeNatal(chart) : null, [chart]);
   const doryeongOneLine = useMemo(() => chart ? buildDoryeongOneLine(chart) : null, [chart]);
-  const lifeSeasons = useMemo(() => chart && timeline ? buildLifeSeasons(chart, timeline) : null, [chart, timeline]);
-  const lifeGraph = useMemo(() => chart && timeline ? buildLifeGraph(chart, timeline) : null, [chart, timeline]);
+  const lifeSeasons = useMemo(() => chart && displayTimeline ? buildLifeSeasons(chart, displayTimeline) : null, [chart, displayTimeline]);
+  const lifeGraph = useMemo(() => chart && displayTimeline ? buildLifeGraph(chart, displayTimeline) : null, [chart, displayTimeline]);
   const cloudPayload = useMemo<CloudPayload | null>(() => chart && timeline && pendingInput && yunGender !== null ? {
     version: 1, fortuneYear,
     result: { version: 1, savedAt: resultSavedAt, input: pendingInput, yunGender, chart, timeline, benefactors, reading, consultation },
@@ -547,15 +551,15 @@ export default function SajuForm() {
               <p className="doryeong-one-line-basis">{doryeongOneLine.basis}</p>
               <DoryeongShareCard line={doryeongOneLine.line} />
             </div>}
-            <MansePanel chart={chart} benefactors={benefactors} timeline={timeline ?? undefined} fortuneYear={fortuneYear} mode="chart" />
+            <MansePanel chart={chart} benefactors={benefactors} timeline={displayTimeline ?? undefined} fortuneYear={fortuneYear} mode="chart" />
           </section>
         )}
         {chart && activePage === "elements" && <section className="result" aria-label="오행과 십성"><MansePanel chart={chart} benefactors={benefactors} mode="elements" /></section>}
-        {chart && timeline && activePage === "daily" && <DailyFortunePanel chart={chart} timeline={timeline} />}
+        {chart && displayTimeline && activePage === "daily" && <DailyFortunePanel chart={chart} timeline={displayTimeline} />}
         {lifeGraph && pendingInput && yunGender !== null && activePage === "graph" && <LifeGraphPanel key={lifeNoteStorageKey(pendingInput, yunGender)} report={lifeGraph} noteStorageKey={lifeNoteStorageKey(pendingInput, yunGender)} />}
         {lifeSeasons && activePage === "seasons" && <LifeSeasonsPanel report={lifeSeasons} />}
         {deepAnalysis && chart && activePage === "balance" && <DeepAnalysisPanel chart={chart} analysis={deepAnalysis} />}
-        {chart && timeline && fortune && activePage === "flow" && <FlowOverview chart={chart} timeline={timeline} report={fortune} onYear={changeFortuneYear} disabled={isGenerating} />}
+        {chart && displayTimeline && fortune && activePage === "flow" && <FlowOverview chart={chart} timeline={displayTimeline} report={fortune} onYear={changeFortuneYear} disabled={isGenerating} />}
         {fortune && (activePage === "flow" || activePage === "domains") && (
           <div className="integrated-reading">
             <label htmlFor="fortune-year">살펴볼 운의 연도</label>
@@ -565,15 +569,15 @@ export default function SajuForm() {
             <FortunePanel report={fortune} reading={visibleReading} timezone={chart?.birthplace?.timezone} mode={activePage === "domains" ? "domains" : "flow"} onDomains={() => navigateTo("domains")} />
           </div>
         )}
-        {timeline && activePage === "flow" && (
+        {displayTimeline && activePage === "flow" && (
           <section className="timeline-result" aria-labelledby="timeline-title">
             <div className="timeline-heading">
               <p className="result-label">나의 대운 시간표</p>
               <h2 id="timeline-title">지나온 시간부터 앞으로의 시간까지</h2>
-              <p className="note">첫 대운 시작일: {timeline.firstStartDate} · {timeline.currentYear}년 기준</p>
+              <p className="note">첫 대운 시작일: {displayTimeline.firstStartDate} · {displayTimeline.currentYear}년 기준</p>
             </div>
             {groups.map((group) => {
-              const periods = timeline.periods.filter((period) => period.status === group.status);
+              const periods = displayTimeline.periods.filter((period) => period.status === group.status);
               if (periods.length === 0) return null;
               return (
                 <section className="timeline-group" key={group.status} aria-label={group.title}>

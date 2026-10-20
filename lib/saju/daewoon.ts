@@ -38,6 +38,27 @@ function koreanGanji(ganji: string): string {
   return stemKo[stems.indexOf(stem)] + branchKo[branches.indexOf(branch)];
 }
 
+export function periodStatus(startYear: number, endYear: number, currentYear: number): PeriodStatus {
+  return endYear < currentYear ? "past" : startYear > currentYear ? "future" : "current";
+}
+
+/**
+ * 저장된 대운표를 화면에 보여 줄 때 기준 연도와 과거·현재·미래 구분만 다시 맞춘다.
+ * 대운 간지·연도·나이와 저장 형식은 그대로 두며, 바뀐 것이 있을 때만 새 객체를 돌려준다.
+ * 저장 자료 자체는 바꾸지 않으므로 계정·브라우저 저장 형식과 호환된다.
+ */
+export function timelineForYear(
+  timeline: DaewoonTimeline,
+  currentYear = new Date().getFullYear(),
+): DaewoonTimeline {
+  const periods = timeline.periods.map((period) => {
+    const status = periodStatus(period.startYear, period.endYear, currentYear);
+    return status === period.status ? period : { ...period, status };
+  });
+  if (timeline.currentYear === currentYear && periods.every((period, index) => period === timeline.periods[index])) return timeline;
+  return { ...timeline, periods, currentYear };
+}
+
 export function calculateDaewoon(
   raw: SajuInput,
   gender: YunGender,
@@ -87,12 +108,7 @@ export function calculateDaewoon(
         endYear,
         startAge: startYear - year + 1,
         endAge: endYear - year + 1,
-        status:
-          endYear < currentYear
-            ? "past"
-            : startYear > currentYear
-              ? "future"
-              : "current",
+        status: periodStatus(startYear, endYear, currentYear),
       };
     })
     .filter((period) => period.endYear >= period.startYear);
