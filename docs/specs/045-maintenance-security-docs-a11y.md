@@ -33,8 +33,8 @@
 - [x] `npm run check`: 타입 검사 및 기존 282개 테스트 통과(구현 담당 실행).
 - [x] 비밀값 없이 `npm run build` 성공(Next.js 16.3.8).
 - [x] 로컬 프로덕션 서버(`next start`)에서 `/`, `/api/locations` 응답의 보안 헤더 네 가지 확인. 비밀값 없이 `/api/reading` HTTP 503 `missing_api_key`, `/api/cron/daily` HTTP 401 확인.
-- [ ] 구현을 맡지 않은 서브에이전트의 테스트 작성·보강과 실행: 도시 목록 역할, 한마디 `role="group"`, 화면 전환 초점, 보안 헤더 설정, 미사용 코드 검사.
-- [ ] 실제 브라우저에서 도시 목록 키보드 선택, 스크린리더 안내, 화면 전환 후 초점 위치 확인.
+- [x] 구현을 맡지 않은 서브에이전트의 테스트 작성·보강과 실행: 도시 목록 역할, 한마디 `role="group"`, 화면 전환 초점, 보안 헤더 설정, 미사용 코드 검사(아래 테스트 담당 기록).
+- [ ] 실제 브라우저에서 도시 목록 키보드 선택, 스크린리더 안내, 화면 전환 후 초점 위치 확인. (헤드리스 Chrome 키보드 확인은 통과, 스크린리더·실제 모바일 기기는 미확인 — 아래 기록)
 - [ ] Vercel 미리보기 또는 운영 주소의 응답 헤더 확인(배포는 이번 범위가 아님).
 
 ## 검증 기록 (2026-10-21, 구현 담당)
@@ -45,3 +45,26 @@
 - `npm run build`(비밀값 환경변수 해제): 성공, 경로 8개 생성.
 - `tests/032-doryeong-one-line.test.ts:41`은 `aria-label="내 길을 비추는 한마디"` 문자열 위치를 찾는다. `role="group"`을 앞에 추가해도 같은 문자열이 남아 현재 통과한다. 테스트 갱신 여부는 테스트 담당이 판단한다.
 - NOT TESTED: 실제 브라우저·스크린리더·모바일 화면 확인, 테스트 담당의 독립 테스트.
+
+## 검증 기록 (2026-10-21, 테스트 담당 서브에이전트 — 구현에 참여하지 않음)
+- 추가한 테스트: `tests/045-a11y-security-cleanup.test.ts` 11개. 실제 `app/saju-form.tsx`를 vm에서 실행하는 하네스 `tests/helpers/saju-form-harness.ts`를 새로 만들었다(훅 순서 번호 대신 효과 본문 문자열로 효과를 찾고, 출생지는 실제 도시 검색 목록을 눌러 고른다). 기존 `tests/account-ui-races.test.ts`의 `slots[16]`·`effects[1]` 가정은 그대로 두었고 계속 통과한다.
+  - 도시 결과: `ul[aria-label="도시 검색 결과"] > li > button[type=button]`, 화면 어디에도 `role="listbox"`·`role="option"`·`aria-selected` 없음, 버튼을 누르면 출생지 선택·목록 닫힘, 고른 도시로 제출하면 출생지 오류 없이 계산.
+  - 한마디 영역 `role="group"` + `aria-label`, `#input-title`·`#result-title`의 `tabIndex={-1}`.
+  - 초점: 첫 화면·브라우저 저장본 자동 복원에서는 초점 이동 없음. 계정 결과 열기 → `#result-title`, 메뉴로 daily·elements·balance·graph·seasons·flow·domains·chart·input 이동 → 각 화면의 제목 h2(`tabindex="-1"`, `preventScroll: true`)로 한 번만 이동. 다른 화면에서 숨겨진 입력 영역의 h2(보관함·입력 제목)는 건너뜀.
+  - `next.config.ts` `headers()`: `/:path*` 한 규칙에 네 헤더가 정확히 이 순서·값으로 있고 CSP 없음, 기존 `agentRules`·`experimental` 유지.
+  - 미사용 코드: 테스트 안에서 TypeScript API로 `tsconfig.json` + `noUnusedLocals` 검사 → 진단 0건. `tenGod` import·`periodContext` 계열 상수가 다시 들어오지 않았는지 확인.
+- `tests/032-doryeong-one-line.test.ts:41`은 고치지 않았다. 문자열 위치(한마디가 만세력보다 먼저)를 보는 테스트라 여전히 유효하고, `role="group"`은 새 테스트가 렌더 결과에서 직접 확인한다.
+- 테스트가 실제로 잡는지 확인(구현을 잠시 바꿨다가 `git checkout`으로 원복): 입력 영역 제외 조건 삭제, `role="group"` 삭제, 첫 화면 초점 방지(`pageFocusRequest === 0`) 삭제, 도시 버튼에 `role="option" aria-selected` 복귀, CSP 헤더 추가 → 모두 새 테스트가 실패로 잡음.
+- 명령과 결과:
+  - `npm ci` → 설치 성공, `found 0 vulnerabilities`.
+  - `npm run check` 변경 전(구현 커밋 그대로) tests 282 / pass 282 / fail 0 → 테스트 추가 후 tests 306 / pass 306 / fail 0.
+  - `npx tsc --noEmit --noUnusedLocals` → 오류 없음(exit 0).
+  - `npm audit` → `found 0 vulnerabilities`.
+  - 비밀값 환경변수 없이 `npm run build` → 성공(Next.js 16.3.8, 경로 8개).
+- 실제 브라우저(Playwright + 설치된 Google Chrome 헤드리스, `next start` 로컬 프로덕션 서버, 폼 제출 없음): 26개 확인 항목 모두 통과(데스크톱 1280×720, 모바일 375×812 에뮬레이션 각각).
+  - `/` 응답 헤더 네 가지 확인, CSP 없음.
+  - 첫 화면 초점은 body. Tab 12번으로 도시 칸 도달 → “서울” 입력 → 접근성 트리 `list "도시 검색 결과" > listitem > button` → Tab 2번으로 첫 도시 버튼 → Enter로 선택(“선택: 대한민국 · Seoul · Asia/Seoul”).
+  - 브라우저 저장본을 연 직후 초점 이동 없음. 결과 메뉴 링크에 초점을 두고 Enter로 9개 화면을 오가면 각각 해당 h2(`tabindex="-1"`)에 초점이 간다. h2는 Tab 순서에 들어가지 않는다.
+  - 전체 과정에서 `/api/reading`·`/api/consultation` 요청 0건.
+- 관찰(요구사항 위반은 아님, 판단 필요): 메뉴 이동 때 `window.scrollTo({ top: 0 })` 뒤 `focus({ preventScroll: true })`를 하므로 초점이 간 제목이 첫 화면 영역 밖에 있다. 측정값: 데스크톱 1280×720에서 제목 top 882–1004px, 모바일 375×812에서 983–1092px, 모두 scrollY 0. 화면을 보는 키보드 이용자는 초점 위치를 바로 보지 못한다. 스크린리더 안내는 제목을 읽을 것으로 예상되나 확인하지 않았다.
+- NOT TESTED: 실제 스크린리더(VoiceOver·NVDA·TalkBack) 안내, 실제 모바일 기기, Vercel 미리보기·운영 주소의 응답 헤더(배포는 범위 밖), 브라우저 뒤로 가기(popstate)로 화면이 바뀔 때의 초점 동작.
