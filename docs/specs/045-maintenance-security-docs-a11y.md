@@ -80,3 +80,17 @@
   - 데스크톱에서 메뉴 링크에 초점을 두고 실제 Enter 키로 ‘인생 4계절’을 열면 `#life-seasons-title`에 초점, top 23.9px, 화면 안. 저장본 자동 복원 직후 초점은 body.
 - 명령: `npm run check` tests 306 / pass 306 / fail 0, `npx tsc --noEmit --noUnusedLocals` 오류 없음, 비밀값 없이 `npm run build` 성공.
 - NOT TESTED: 실제 동작 줄이기(prefers-reduced-motion) 설정 화면, 스크린리더, 실제 모바일 기기, 브라우저 뒤로 가기(popstate) 때의 스크롤·초점. 테스트 하네스의 가짜 요소에는 `getBoundingClientRect`·`scrollIntoView`가 없어 새 스크롤 분기는 자동 테스트에서 실행되지 않는다.
+
+## 후속 수정 검증 (2026-10-21, 테스트 담당 서브에이전트 — 32429b1 구현에 참여하지 않음)
+- 자동 테스트 보강(`tests/045-a11y-security-cleanup.test.ts` 3개 추가, 이 파일은 총 14개): 하네스의 가짜 요소에 `getBoundingClientRect`·`scrollIntoView`와 `window.innerHeight`(720)를 넣었다.
+  - 제목이 화면 아래 밖(top 900px)이면 9개 화면 모두 `navigateTo`가 맨 위로 한 번 올린 뒤 같은 제목에 `scrollIntoView({ block: "start", behavior: "auto" })` 정확히 한 번 → `focus({ preventScroll: true })` 순서.
+  - 위로 벗어남(top −30)·아래 끝 1px 초과(bottom 721)는 스크롤, 화면 안(0–720, 24–64, 680–720)은 스크롤 없이 초점만.
+  - 첫 화면·브라우저 저장본 자동 복원은 제목이 화면 밖이어도 `scrollTo`·`scrollIntoView`·`focus` 모두 0회.
+  - 구현을 잠시 바꿔 확인 후 원복: 스크롤 분기 삭제(3개 실패), 항상 스크롤(2개 실패), `behavior: "smooth"`(1개 실패), 초점 뒤에 스크롤(3개 실패).
+- 실제 브라우저(Playwright + 헤드리스 Chrome, `next start`, 2015년 기준 브라우저 저장본, 폼 제출 없음): 데스크톱 1280×720·모바일 375×812 × 동작 줄이기 끔/켬(`reducedMotion: "reduce"`, `matchMedia` 일치 확인) 4가지 조건에서 각 16개 항목 모두 통과.
+  - 자동 복원 직후 초점 body·scrollY 0.
+  - 메뉴 링크에서 Enter로 9개 화면(입력 화면 포함)을 열면 초점 제목이 모두 화면 안. 데스크톱 top 24.2–24.4px(오늘의 운세만 490px, 내용이 짧아 더 내려가지 않음), 모바일 top 23.6–24.4px(오늘의 운세 640px). 두 번의 프레임 뒤와 0.4초 뒤의 scrollY·제목 위치가 같아 바로 이동했다. 동작 줄이기 켬/끔 결과가 같다.
+  - 브라우저 뒤로 가기 3번·앞으로 가기 1번: 화면이 바뀌고 초점이 그 화면의 h2로 가며 화면 안에 있다. 이때 스크롤 위치는 브라우저의 기록 복원 위치라 제목이 화면 아래쪽에 올 수 있다(데스크톱 top 490–609px, 모바일 518–742px). 뒤로 가기에도 초점이 옮겨지는 것은 초점 효과가 `activePage` 변경에도 실행되기 때문이다.
+  - `/api/reading`·`/api/consultation` 요청 0건.
+- 명령: `npm run check` tests 309 / pass 309 / fail 0(이전 306에서 3개 추가). `npx tsc --noEmit --noUnusedLocals` 오류 없음. 비밀값 없이 `npm run build` 성공.
+- NOT TESTED: 실제 스크린리더 안내, 실제 모바일 기기(에뮬레이션만), 운영체제의 실제 동작 줄이기 설정(브라우저 에뮬레이션만), Vercel 응답 헤더.

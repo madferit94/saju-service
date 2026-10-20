@@ -163,6 +163,62 @@ test("초점 효과는 화면 전환 요청 번호와 화면 이름이 바뀔 �
   assert.equal((source.match(/setPageFocusRequest\(/gu) ?? []).length, 1, "초점 요청은 navigateTo 한 곳에서만 만든다");
 });
 
+// ── 화면 전환 후 제목이 화면 밖이면 보이게 맞춘 뒤 초점 (32429b1 후속 수정) ─────────
+
+const allPages = ["daily", "elements", "balance", "graph", "seasons", "flow", "domains", "chart", "input"] as const;
+
+test("초점 제목이 화면 아래 밖이면 scrollIntoView(block start, behavior auto)를 정확히 한 번 부른 뒤 초점을 옮긴다", () => {
+  // 실제 브라우저에서 잰 것처럼 scrollY 0에서 제목이 900px 아래(화면 높이 720px 밖)에 있다고 둔다.
+  const form = sajuFormHarness({ viewportHeight: 720, rectFor: (element) => element.tag === "h2" ? { top: 900, bottom: 940 } : { top: 0, bottom: 10 } });
+  form.account().onLoad(payload()); form.render();
+  form.commitFocus();
+  for (const page of allPages) {
+    const before = form.domEvents.length;
+    const scrollsBefore = form.scrollTo.length;
+    form.navigate(page);
+    assert.equal(form.scrollTo.length, scrollsBefore + 1, `${page}: navigateTo는 먼저 맨 위로 올린다`);
+    form.commitFocus();
+    const events = form.domEvents.slice(before);
+    assert.deepEqual(events.map((event) => event.kind), ["scrollIntoView", "focus"], `${page}: 스크롤 한 번 뒤 초점`);
+    assert.equal(events[0].id, events[1].id, `${page}: 같은 제목을 스크롤하고 초점을 준다`);
+    assert.equal(events[0].text, events[1].text);
+    assert.deepEqual({ ...events[0].options }, { block: "start", behavior: "auto" }, `${page}: scrollIntoView 옵션`);
+    assert.deepEqual({ ...events[1].options }, { preventScroll: true }, `${page}: 초점 때 다시 스크롤하지 않는다`);
+  }
+});
+
+test("초점 제목이 화면 위로 벗어나 있어도 한 번 맞추고, 화면 안이면 스크롤하지 않는다", () => {
+  for (const [rect, expected] of [
+    [{ top: -30, bottom: 10 }, ["scrollIntoView", "focus"]],
+    [{ top: 700, bottom: 721 }, ["scrollIntoView", "focus"]], // 아래 끝이 1px만 넘어도 화면 밖
+    [{ top: 0, bottom: 720 }, ["focus"]], // 화면 경계에 딱 맞으면 화면 안
+    [{ top: 24, bottom: 64 }, ["focus"]],
+    [{ top: 680, bottom: 720 }, ["focus"]],
+  ] as const) {
+    const form = sajuFormHarness({ viewportHeight: 720, rectFor: (element) => element.tag === "h2" ? rect : { top: 0, bottom: 10 } });
+    form.account().onLoad(payload()); form.render();
+    form.navigate("seasons");
+    const before = form.domEvents.length;
+    form.commitFocus();
+    assert.deepEqual(form.domEvents.slice(before).map((event) => event.kind), [...expected], JSON.stringify(rect));
+    assert.equal(form.focusLog.at(-1)!.id, "life-seasons-title");
+  }
+});
+
+test("첫 화면과 브라우저 저장본 자동 복원 때는 제목이 화면 밖이어도 스크롤·초점이 모두 없다", () => {
+  const offscreen = { viewportHeight: 720, rectFor: () => ({ top: 900, bottom: 940 }) };
+  const first = sajuFormHarness(offscreen);
+  first.mount(); first.commitFocus();
+  assert.deepEqual(first.domEvents, []);
+  assert.deepEqual(first.scrollTo, []);
+  const restored = sajuFormHarness({ ...offscreen, saved: payload().result });
+  restored.mount();
+  assert.ok(restored.find((node) => node.props.id === "result-title"));
+  restored.commitFocus(); restored.render(); restored.commitFocus();
+  assert.deepEqual(restored.domEvents, [], "자동 복원은 스크롤도 초점도 바꾸지 않는다");
+  assert.deepEqual(restored.scrollTo, []);
+});
+
 // ── 기본 보안 헤더 ───────────────────────────────────────────────────
 
 test("next.config의 headers()는 모든 경로에 기본 보안 헤더 네 가지만 붙이고 CSP는 넣지 않는다", async () => {

@@ -51,10 +51,14 @@ function panelHeadings(type: symbol, props: Record<string, any>): { id?: string;
 }
 
 // 초점 이동 효과가 쓰는 만큼만 흉내 낸 아주 작은 DOM.
+export type Rect = { top: number; bottom: number };
+export type DomEvent = { kind: "focus" | "scrollIntoView"; id?: string; text: string; options?: Record<string, unknown> };
+type DomEnv = { log: FocusLog[]; events: DomEvent[]; rectFor?: (element: FakeElement) => Rect };
+
 export class FakeElement {
   children: FakeElement[] = [];
   parent: FakeElement | null = null;
-  constructor(public tag: string, public attrs: Record<string, string>, public text: string, private log: FocusLog[]) {}
+  constructor(public tag: string, public attrs: Record<string, string>, public text: string, private env: DomEnv) {}
   private walk(): FakeElement[] { return this.children.flatMap((child) => [child, ...child.walk()]); }
   querySelector(selector: string) {
     if (!selector.startsWith("#")) throw new Error(`지원하지 않는 선택자: ${selector}`);
@@ -76,12 +80,18 @@ export class FakeElement {
   hasAttribute(name: string) { return name in this.attrs; }
   getAttribute(name: string) { return this.attrs[name] ?? null; }
   setAttribute(name: string, value: string) { this.attrs[name] = String(value); }
-  focus(options?: { preventScroll?: boolean }) { this.log.push({ tag: this.tag, id: this.attrs.id, text: this.text, tabindex: this.attrs.tabindex, options }); }
+  focus(options?: { preventScroll?: boolean }) {
+    this.env.log.push({ tag: this.tag, id: this.attrs.id, text: this.text, tabindex: this.attrs.tabindex, options });
+    this.env.events.push({ kind: "focus", id: this.attrs.id, text: this.text, options: options && { ...options } });
+  }
+  /** 화면 위치. rectFor를 주지 않으면 화면 맨 위(화면 안)에 있는 것으로 본다. */
+  getBoundingClientRect(): Rect { return this.env.rectFor?.(this) ?? { top: 0, bottom: 0 }; }
+  scrollIntoView(options?: Record<string, unknown>) { this.env.events.push({ kind: "scrollIntoView", id: this.attrs.id, text: this.text, options: options && { ...options } }); }
 }
 
 export type FocusLog = { tag: string; id?: string; text: string; tabindex?: string; options?: { preventScroll?: boolean } };
 
-function buildDom(root: unknown, log: FocusLog[]): FakeElement {
+function buildDom(root: unknown, env: DomEnv): FakeElement {
   const attach = (parent: FakeElement, value: unknown) => {
     if (Array.isArray(value)) { value.forEach((item) => attach(parent, item)); return; }
     if (!value || typeof value !== "object" || !("props" in value)) return;
@@ -92,14 +102,14 @@ function buildDom(root: unknown, log: FocusLog[]): FakeElement {
         if (key === "children" || typeof prop === "function" || typeof prop === "object" || prop === false || prop === undefined || prop === null) continue;
         attrs[key === "className" ? "class" : key === "tabIndex" ? "tabindex" : key] = String(prop);
       }
-      const element = new FakeElement(node.type, attrs, textOf(node.props.children), log);
+      const element = new FakeElement(node.type, attrs, textOf(node.props.children), env);
       element.parent = parent; parent.children.push(element);
       attach(element, node.props.children);
     } else if (typeof node.type === "symbol") {
-      const holder = new FakeElement("div", { "data-component": String(node.type.description) }, "", log);
+      const holder = new FakeElement("div", { "data-component": String(node.type.description) }, "", env);
       holder.parent = parent; parent.children.push(holder);
       for (const heading of panelHeadings(node.type, node.props)) {
-        const h2 = new FakeElement("h2", heading.id ? { id: heading.id } : {}, heading.text, log);
+        const h2 = new FakeElement("h2", heading.id ? { id: heading.id } : {}, heading.text, env);
         h2.parent = holder; holder.children.push(h2);
       }
     } else if (typeof node.type === "function") {
@@ -107,7 +117,7 @@ function buildDom(root: unknown, log: FocusLog[]): FakeElement {
       attach(parent, (node.type as (props: unknown) => unknown)(node.props));
     }
   };
-  const top = new FakeElement("#root", {}, "", log);
+  const top = new FakeElement("#root", {}, "", env);
   attach(top, root);
   return top.children[0];
 }
@@ -117,6 +127,10 @@ export type HarnessOptions = {
   /** 컴포넌트 안의 `new Date()`가 돌려줄 고정 시각. 생략하면 실제 시계를 쓴다. */
   now?: string;
   cities?: Birthplace[];
+  /** 가짜 요소의 화면 위치. 생략하면 모든 요소가 화면 안에 있다. */
+  rectFor?: (element: FakeElement) => Rect;
+  /** window.innerHeight (기본 720) */
+  viewportHeight?: number;
 };
 
 export function sajuFormHarness(options: HarnessOptions = {}) {
@@ -127,13 +141,16 @@ export function sajuFormHarness(options: HarnessOptions = {}) {
   let cursor = 0;
   const writes: SavedSajuResult[] = [];
   const focusLog: FocusLog[] = [];
+  const domEvents: DomEvent[] = [];
+  const scrollTo: unknown[] = [];
   const timers: (() => void)[] = [];
   const requests: { url: string; body: Record<string, unknown> | null; signal?: AbortSignal }[] = [];
   const pending: ((response: unknown) => void)[] = [];
   const window = {
     location: { href: "http://localhost:3000/" },
+    innerHeight: options.viewportHeight ?? 720,
     history: { pushState(_state: unknown, _title: string, url: string) { window.location.href = new URL(url, window.location.href).href; } },
-    scrollTo() {}, addEventListener() {}, removeEventListener() {},
+    scrollTo(value: unknown) { scrollTo.push(value); }, addEventListener() {}, removeEventListener() {},
   };
   const hooks = {
     useState(initial: unknown) { const index = cursor++; if (!(index in slots)) slots[index] = initial; return [slots[index], (next: unknown) => { slots[index] = typeof next === "function" ? (next as (value: unknown) => unknown)(slots[index]) : next; }]; },
@@ -189,7 +206,7 @@ export function sajuFormHarness(options: HarnessOptions = {}) {
     render,
     get tree() { return tree; },
     find, all,
-    writes, requests, focusLog,
+    writes, requests, focusLog, domEvents, scrollTo,
     get href() { return window.location.href; },
     text: () => textOf(tree),
     /** 처음 화면이 뜰 때 React가 실행하는 효과를 모두 실행한다(저장본 복원·국가 목록·초점 효과 포함). */
@@ -200,7 +217,7 @@ export function sajuFormHarness(options: HarnessOptions = {}) {
     },
     /** 화면을 그린 뒤 실제 DOM처럼 ref를 연결하고 초점 효과를 실행한다. */
     commitFocus() {
-      const root = buildDom(tree, focusLog);
+      const root = buildDom(tree, { log: focusLog, events: domEvents, rectFor: options.rectFor });
       const ref = tree.props.ref as { current: unknown } | undefined;
       if (!ref || !("current" in ref)) throw new Error("최상위 section에 ref가 없습니다");
       ref.current = root;
