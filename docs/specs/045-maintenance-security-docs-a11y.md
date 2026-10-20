@@ -68,3 +68,15 @@
   - 전체 과정에서 `/api/reading`·`/api/consultation` 요청 0건.
 - 관찰(요구사항 위반은 아님, 판단 필요): 메뉴 이동 때 `window.scrollTo({ top: 0 })` 뒤 `focus({ preventScroll: true })`를 하므로 초점이 간 제목이 첫 화면 영역 밖에 있다. 측정값: 데스크톱 1280×720에서 제목 top 882–1004px, 모바일 375×812에서 983–1092px, 모두 scrollY 0. 화면을 보는 키보드 이용자는 초점 위치를 바로 보지 못한다. 스크린리더 안내는 제목을 읽을 것으로 예상되나 확인하지 않았다.
 - NOT TESTED: 실제 스크린리더(VoiceOver·NVDA·TalkBack) 안내, 실제 모바일 기기, Vercel 미리보기·운영 주소의 응답 헤더(배포는 범위 밖), 브라우저 뒤로 가기(popstate)로 화면이 바뀔 때의 초점 동작.
+
+## 후속 수정: 화면 전환 후 초점 제목이 보이지 않던 문제 (2026-10-21, 구현 담당)
+- 근거: 테스트 담당의 실제 브라우저 측정에서 메뉴 이동 때 `window.scrollTo({ top: 0 })` 뒤 `focus({ preventScroll: true })`를 해서, 초점을 받은 제목이 scrollY 0에서 데스크톱 1280×720 기준 882–1004px, 모바일 375×812 기준 983–1092px에 있어 화면 밖이었다. 화면을 보는 키보드 이용자가 초점 위치를 볼 수 없었다.
+- 수정(`app/saju-form.tsx` 초점 효과): 초점을 옮기기 전에 제목의 화면 위치를 재고, 화면 밖(위나 아래로 벗어남)이면 `scrollIntoView({ block: "start", behavior: "auto" })`로 제목을 화면 위쪽에 맞춘다. 그다음 기존처럼 `focus({ preventScroll: true })`로 초점을 옮긴다. 이미 보이는 제목이면 `navigateTo`의 맨 위 위치를 그대로 둔다. 앱 CSS에는 부드러운 스크롤 설정이 없고 `behavior: "auto"`라 동작 줄이기 설정과 상관없이 즉시 이동한다.
+- 수정(`app/globals.css`): id가 없는 제목(오행·십성 화면의 h2)도 다른 제목과 같이 위쪽 24px 여백을 두고 맞춰지도록 `h2[tabindex="-1"]`에 `scroll-margin-top: 24px`를 더했다(초점 테두리가 화면 위끝에 잘리지 않게).
+- 첫 화면·저장본 자동 복원 때는 기존처럼 초점 요청이 없어(`pageFocusRequest === 0`) 초점과 스크롤이 움직이지 않는다.
+- 입력 화면도 scrollY 0에서는 첫 화면 이미지와 보관함 아래(데스크톱 기준 제목 top 1003px)에 제목이 있어 화면 밖이었다. 따라서 입력 화면으로 갈 때도 ‘언제 태어나셨나요?’ 제목이 화면 위쪽에 오고, 그 위의 첫 화면 이미지·보관함은 화면 밖으로 올라간다(보관함은 Shift+Tab으로 닿는다). 맨 위를 보여 줄지 제목을 보여 줄지는 화면 확인 때 판단이 필요하다.
+- 실제 브라우저 확인(Claude 브라우저 창, `next start` 로컬 프로덕션 서버, 2015년 기준 브라우저 저장본, 폼 제출·AI 요청 없음):
+  - 데스크톱 1280×720, 모바일 375×812에서 메뉴로 daily·elements·balance·graph·seasons·flow·domains·chart·input 9개 화면을 차례로 열었을 때 초점 제목이 모두 화면 안에 있었다. 대부분 제목 top 약 24px(scroll-margin). 오늘의 운세는 화면 내용이 짧아 더 내려가지 않아 top 490px(데스크톱)·639px(모바일)이지만 화면 안이다.
+  - 데스크톱에서 메뉴 링크에 초점을 두고 실제 Enter 키로 ‘인생 4계절’을 열면 `#life-seasons-title`에 초점, top 23.9px, 화면 안. 저장본 자동 복원 직후 초점은 body.
+- 명령: `npm run check` tests 306 / pass 306 / fail 0, `npx tsc --noEmit --noUnusedLocals` 오류 없음, 비밀값 없이 `npm run build` 성공.
+- NOT TESTED: 실제 동작 줄이기(prefers-reduced-motion) 설정 화면, 스크린리더, 실제 모바일 기기, 브라우저 뒤로 가기(popstate) 때의 스크롤·초점. 테스트 하네스의 가짜 요소에는 `getBoundingClientRect`·`scrollIntoView`가 없어 새 스크롤 분기는 자동 테스트에서 실행되지 않는다.

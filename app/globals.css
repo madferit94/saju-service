@@ -874,7 +874,7 @@ summary { cursor: pointer; min-height: 44px; padding: 12px 0; line-height: 1.6; 
 summary:hover { color: var(--primary); }
 button, a, summary { touch-action: manipulation; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
-[id] { scroll-margin-top: 24px; }
+[id], h2[tabindex="-1"] { scroll-margin-top: 24px; }
 .report-nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 0 24px; }
 .report-nav a { padding: 10px 14px; min-height: 44px; background: var(--soft); border: 1px solid var(--border); color: var(--primary); border-radius: 30px; text-decoration: none; font-size: 14px; }
 .report-nav a:hover { background: var(--border); }

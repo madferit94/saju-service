@@ -207,6 +207,10 @@ export default function SajuForm() {
         : Array.from(root.querySelectorAll<HTMLElement>("h2")).find((element) => !element.closest(".input-entry, nav"));
     if (!heading) return;
     if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    // navigateTo가 맨 위로 올린 뒤에도 제목이 화면 밖이면, 초점 위치가 보이도록 제목을 화면 위쪽에 맞춘다.
+    // 제목이 이미 화면 안에 있으면 맨 위 위치를 그대로 둔다. behavior "auto"는 부드러운 스크롤을 쓰지 않는다(동작 줄이기 설정과 무관하게 즉시 이동).
+    const rect = heading.getBoundingClientRect?.();
+    if (rect && (rect.top < 0 || rect.bottom > window.innerHeight)) heading.scrollIntoView?.({ block: "start", behavior: "auto" });
     heading.focus({ preventScroll: true });
   }, [pageFocusRequest, activePage]);
 
