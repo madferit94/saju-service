@@ -1,5 +1,7 @@
 # Status
 
+- [ ] 045-security-maintenance.md — next 16.4.2 보안 업데이트·의존성 취약점 0개·기본 보안 헤더·패키지 이름 정리 (자동 검사·로컬 확인 완료 / 운영 배포 후 헤더 확인 대기)
+
 - [ ] 044-lantern-journey-theme.md — 등불 테마 v0.3.0 구현·병합·운영 배포 완료 / 브라우저 실행기 오류로 시각·모바일 확인 대기
 
 - [x] 043-stars-integrated-reading.md — 귀인·신살 확장, 클릭 상세와 종합 해석
@@ -28,7 +30,7 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] `003-elements-benefactors.md` 오행과 네 종류의 귀인을 함께 표시
 - [x] `004-birthplace.md` 출생 국가·도시의 시간대와 경도를 계산에 반영
 - [x] `005-korean-city-search.md` 해외 도시를 국가별로 한글 검색
-- [ ] `006-gemini-saju-reading.md` 구현 완료 · Google API 크레딧 충전 후 성공 경로 확인 필요
+- [ ] `006-gemini-saju-reading.md` 구현 완료 · Google API 크레딧 충전 후 성공 경로 확인 필요 (2026-10-21 메모: 이후 Spec018·035·039·041~044에 실제 Gemini 성공 응답 기록이 있음. 이 Spec 기준의 성공 경로 재확인 후 체크)
 - [x] `007-local-reading-option.md` 계산 결과에서 로컬 규칙 해석을 개인정보 전송 없이 즉시 표시
 - [x] `008-reading-depth-and-hanja.md` 네 기둥·오행·귀인·대운을 근거로 깊이 있게 해석하고 한자 독음과 풀이 제공
 - [x] `009-lunar-birth-date.md` 양력·음력 생일과 평달·윤달·모름 입력, 윤달 모름 후보 비교

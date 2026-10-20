@@ -1,52 +1,70 @@
-# Saju Service Starter
+# Saju Service — Your Life Flow by 10-Year Luck Periods
 
 **English** · [한국어](README.ko.md)
 
-A starter project for practicing a real product development process together with an AI agent.
+A web service that reads your **saju** (Korean Four Pillars of Destiny) from your birth date, time and place, and shows your life as a timeline of **10-year luck periods (대운)** — past, present and future. It was built feature by feature with an AI agent, using written specs and automated tests.
 
-## Run
+**[Open the service](https://saju-service-steel.vercel.app/)** · Current version: **v0.3.1** · [Changelog](CHANGELOG.md) (Korean)
+
+## What you can do
+
+- **Calculate your chart**: enter a solar or lunar birth date (including leap months), birth time and birth city. The city's time zone and longitude are applied.
+- **See your life flow**: your own 10-year luck periods in time order, with the current period highlighted, a life graph and "four seasons of life".
+- **Read the explanation**: an instant rule-based reading runs in your browser. If you agree, an optional AI reading (Gemini) adds a deeper summary.
+- **Daily fortune**: a short fortune for the day, refreshed at 09:00 Korean time.
+- **Save and share**: keep one result in this browser, or log in with Google to save it privately to your account. A share card shows only a one-line message, not your birth details.
+
+Readings are for reflection. They do not predict or guarantee events.
+
+## Privacy
+
+- The rule-based reading is calculated in your browser and sends nothing.
+- The AI reading runs only after you agree. Only the calculated chart values are sent to Gemini — never your raw birth date, time or place.
+- Account saving uses Supabase with row-level security: each person can only read and delete their own records.
+
+## Run it yourself
+
+Needs Node.js 22.9 or later.
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
-Open the address shown in the terminal in your browser.
+Open the address shown in the terminal.
 
-## Key documents
+Optional settings go in `.env.local` (see `.env.example`). Without them the chart and rule-based reading still work; the AI reading returns "unavailable" and login is turned off.
 
-- `docs/PRD.md`: what to build and why.
-- `docs/specs/`: how each feature should behave.
-- `docs/status.md`: how far the work has progressed.
-- `AGENTS.md`: the basic principles the agent follows while working.
-- `tests/`: automated checks.
+| Variable | Used for |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Google login and account saving |
+| `GEMINI_API_KEY` | AI reading (server only) |
+| `CRON_SECRET` | Protects the daily 09:00 job |
 
-## Folder structure
+Checks:
 
-```text
-├── app/                 Screens and pages
-├── lib/saju/            Saju calculation logic
-├── docs/
-│   ├── PRD.md           Product goals and scope
-│   ├── status.md        Progress for each spec
-│   └── specs/           Requirements for each feature
-├── tests/               Automated tests
-├── .agents/skills/      Skills for repeated tasks
-└── AGENTS.md            Agent working principles
+```sh
+npm run check   # type check + all automated tests
+npm run build   # production build
 ```
 
-This project combines AGENTS.md, the PRD, specs, tests, status tracking, skills and the working environment into a harness that lets the agent work reliably.
+## Built with
 
-## Workflow
+Next.js 16, React 19, TypeScript, `lunar-javascript` for the calendar, Supabase (login and storage), Google Gemini, and Vercel (hosting and the daily job).
 
-1. Run the service and check the current features yourself.
-2. Talk with the agent to write the target users, the problem to solve and the product scope in `docs/PRD.md`.
-3. Pick one feature to build and write its spec as `docs/specs/001-feature-name.md`.
-4. Add that spec to `docs/status.md` as `- [ ]`.
-5. Implement against the spec, then check the result with tests and on the actual screen.
-6. Once implementation and checks are both done, change the item in `docs/status.md` to `- [x]`.
-7. Repeat the same steps for the next feature, then deploy to Vercel and check again at the deployed address.
+## How it is organised
 
-Do not build several features at once. Finish one spec at a time.
+```text
+├── app/                 Screens, and API routes in app/api
+├── lib/saju/            Saju calculation and reading rules
+├── lib/account/         Account saving
+├── supabase/migrations/ Database tables and access rules
+├── tests/               Automated tests
+├── docs/
+│   ├── PRD.md           Product goals and scope
+│   ├── specs/           One document per feature, with test results
+│   └── status.md        Which features are finished and verified
+└── AGENTS.md            Working rules for the AI agent
+```
 
-The documents in `docs/` are written in Korean.
+Each feature starts as a spec in `docs/specs/`, is built and tested, and is ticked in `docs/status.md` only after it has been verified. Some features are built but still wait for a person to check them on screen; `docs/status.md` shows which. The documents in `docs/` are written in Korean.

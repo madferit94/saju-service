@@ -1,5 +1,12 @@
 # 변경 이력
 
+## v0.3.1 — 2026-10-21
+
+- 보안 업데이트: Next.js 16.3.5 → 16.4.2(원격 코드 실행·이미지 최적화 SSRF 등 공지 7건 해결), `npm audit fix`로 sharp·source-map-js 취약점 해결. 운영 의존성 취약점 0개.
+- 모든 화면에 기본 보안 헤더 3개 추가: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`.
+- README(영어)·README.ko(한국어)를 연습용 템플릿 설명에서 실제 서비스 소개(기능·개인정보·실행 방법·환경 변수)로 다시 작성. 패키지 이름을 `saju-service`로 정리.
+- 사주 계산·AI 프롬프트·저장 형식·DB는 바꾸지 않았습니다. 운영 배포 여부와 시점은 별도로 결정합니다([Spec045](docs/specs/045-security-maintenance.md)).
+
 ## v0.3.0 — 2026-10-08
 
 - 첫 화면에 승인된 산·빛의 길·등불 이미지와 출생 입력 시작 링크를 적용했습니다.
