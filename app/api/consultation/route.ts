@@ -5,14 +5,19 @@ import { calculateDaewoon } from "../../../lib/saju/daewoon";
 import { calculateBenefactors } from "../../../lib/saju/benefactors";
 import { createGeminiReadingContext } from "../../../lib/saju/gemini-reading";
 import { buildLifeSeasons } from "../../../lib/saju/life-seasons";
+import { checkSameOrigin, createAiRateLimiter, guardFailureResponse } from "../../../lib/request-guard";
 import { CHAPTERS, consultationFacts, consultationPrompt, consultationSchema, enrichLifeSeasonChapter, validateSeasonedChapter, READING_STYLE_VERSION, type ChapterId } from "../../../lib/saju/consultation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 240;
+// 서버 인스턴스마다 한 번 만들어 재사용하는 요청 수 제한기 (Spec 047). 요청·응답 형식은 그대로 두고 앞에서만 막는다.
+const rateLimiter = createAiRateLimiter("consultation", process.env);
 const fail = (status:number,message:string) => NextResponse.json({error:{message}},{status,headers:{"Cache-Control":"no-store"}});
 
 export async function POST(request:Request) {
+  const blocked=checkSameOrigin(request,process.env);
+  if(blocked) return guardFailureResponse(blocked);
   let body;
   try {
     const raw=await request.text();
@@ -24,6 +29,8 @@ export async function POST(request:Request) {
   try {
     const input=validateInput(body.input as SajuInput);
     if(!input.birthplace) return fail(400,"태어난 국가와 도시를 선택해 주세요.");
+    const limited=rateLimiter.take(request);
+    if(limited) return guardFailureResponse(limited);
     const apiKey=process.env.GEMINI_API_KEY?.trim();
     if(!apiKey) return fail(503,"Gemini API 키가 설정되지 않았습니다. 서버 설정을 확인해 주세요.");
     const chart=calculate(input), timeline=calculateDaewoon(input,body.yunGender);

@@ -56,6 +56,22 @@ npm run build   # 배포용 빌드
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Google 로그인과 계정 저장 | 위와 같습니다. |
 | `GEMINI_API_KEY` | AI 풀이(서버 전용) | `/api/reading`이 오류 코드 `missing_api_key`와 함께 HTTP 503을 돌려줍니다. 계산된 사주와 기본 풀이는 그대로 볼 수 있습니다. |
 | `CRON_SECRET` | 매일 예약 작업 경로 보호 | `/api/cron/daily`가 항상 HTTP 401을 돌려줍니다. 오늘의 운세는 방문할 때 계산됩니다. |
+| `AI_RATE_LIMIT_WINDOW_SECONDS` | 선택. AI 요청 수를 세는 시간 창 | 600초(10분)를 씁니다. |
+| `READING_RATE_LIMIT_PER_IP` | 선택. 시간 창 안에서 IP 하나가 보낼 수 있는 `/api/reading` 요청 수 | 6을 씁니다. 풀이 한 번에 요청 2건(짧은 요약 + 상세 풀이)을 쓰므로 풀이 약 3번입니다. |
+| `READING_RATE_LIMIT_GLOBAL` | 선택. 시간 창 안에서 서버 인스턴스 하나가 받을 수 있는 `/api/reading` 요청 수 | 60을 씁니다. |
+| `CONSULTATION_RATE_LIMIT_PER_IP` | 선택. 시간 창 안에서 IP 하나가 보낼 수 있는 `/api/consultation` 요청 수 | 3을 씁니다. 8장을 만드는 `scripts/verify-deep-consultation.ts`를 돌릴 때는 `.env.local`에서 10 정도로 올립니다. |
+| `CONSULTATION_RATE_LIMIT_GLOBAL` | 선택. 시간 창 안에서 서버 인스턴스 하나가 받을 수 있는 `/api/consultation` 요청 수 | 20을 씁니다. |
+
+제한값은 1 이상의 정수만 인정하며, 그 밖의 값은 기본값으로 처리합니다.
+
+### AI 요청 보호
+
+Gemini를 부르는 두 경로(`/api/reading`, `/api/consultation`) 앞에는 다른 사람이 프로젝트의 Gemini 크레딧을 쉽게 쓰지 못하도록 간단한 보호 장치 두 가지가 있습니다.
+
+- **같은 사이트 확인**: 다른 웹사이트의 브라우저가 보낸 요청은 HTTP 403(`forbidden_origin`)으로 막습니다. 이 사이트, Vercel 미리보기 주소, `localhost`에서 보낸 요청은 허용합니다. 브라우저 출처 정보가 전혀 없는 요청(예: `curl`, 스크립트)은 이 확인으로 막지 않으며, 아래 요청 수 제한만 적용됩니다.
+- **요청 수 제한**: 입력 검사를 통과한 요청을 IP별, 서버 인스턴스별로 셉니다. 한도를 넘으면 Gemini를 부르기 전에 HTTP 429(`too_many_requests`)와 `Retry-After` 헤더를 돌려줍니다. 화면에는 풀이 대신 “요청이 많아 잠시 쉬어 갑니다. N분 뒤에 다시 시도해 주세요.”가 나오며, 지어낸 풀이를 보여 주지 않습니다.
+
+이 숫자는 서버마다 메모리에서 따로 셉니다. Vercel은 서버를 여러 개 띄우거나 언제든 다시 시작할 수 있으므로 정확한 전체 한도가 아니라 최선 노력입니다. 전체 한도가 필요하면 프로젝트 소유자가 Vercel 대시보드의 Firewall에서 `/api/reading`, `/api/consultation`에 요청 수 제한 규칙을 추가해야 합니다.
 
 ## 폴더 구성
 
@@ -69,6 +85,7 @@ npm run build   # 배포용 빌드
 │       └── consultation/  장별 상담 API(현재 화면에서는 쓰지 않음)
 ├── lib/
 │   ├── saju/            사주 계산, 기본 풀이, AI 지시문과 응답 검사
+│   ├── request-guard*.ts AI 경로의 같은 사이트 확인과 요청 수 제한
 │   ├── account/         계정에 결과 저장·불러오기
 │   └── supabase/        Supabase 브라우저 연결
 ├── supabase/migrations/ 데이터베이스 표와 본인 전용 접근 규칙

@@ -13,9 +13,13 @@ import {
   validateGeminiSajuReading,
   validateReadingGrounding,
 } from "../../../lib/saju/gemini-reading";
+import { checkSameOrigin, createAiRateLimiter, guardFailureResponse } from "../../../lib/request-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// 서버 인스턴스마다 한 번 만들어 재사용하는 요청 수 제한기 (Spec 047).
+const rateLimiter = createAiRateLimiter("reading", process.env);
 
 function failure(status: number, code: string, message: string) {
   return NextResponse.json({ error: { code, message } }, {
@@ -35,6 +39,9 @@ function apiErrorStatus(error: unknown): number | undefined {
 }
 
 export async function POST(request: Request) {
+  const blocked = checkSameOrigin(request, process.env);
+  if (blocked) return guardFailureResponse(blocked);
+
   let body: unknown;
   try {
     const raw = await request.text();
@@ -58,6 +65,10 @@ export async function POST(request: Request) {
   if (typeof fortuneYear !== "number" || !Number.isInteger(fortuneYear) || fortuneYear < 1990 || fortuneYear > 2100) {
     return failure(400, "invalid_input", "살펴볼 연도는 1990~2100년을 선택해주세요.");
   }
+
+  // 입력 형식이 맞는 요청만 세고, Gemini 호출·키 확인 전에 요청 수를 제한한다.
+  const limited = rateLimiter.take(request);
+  if (limited) return guardFailureResponse(limited);
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {

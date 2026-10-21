@@ -56,6 +56,22 @@ Copy `.env.example` to `.env.local` and fill in what you need. Never commit real
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Google login and account storage | Same as above. |
 | `GEMINI_API_KEY` | AI reading (server only) | `/api/reading` returns HTTP 503 with error code `missing_api_key`. The calculated chart and local readings still work. |
 | `CRON_SECRET` | Protecting the daily cron route | `/api/cron/daily` always returns HTTP 401. Today's fortune is still computed when someone visits. |
+| `AI_RATE_LIMIT_WINDOW_SECONDS` | Optional. Time window for the AI request limits | Uses 600 seconds (10 minutes). |
+| `READING_RATE_LIMIT_PER_IP` | Optional. `/api/reading` requests allowed per IP address in the window | Uses 6. One reading uses 2 requests (short summary + full reading), so this is about 3 readings. |
+| `READING_RATE_LIMIT_GLOBAL` | Optional. `/api/reading` requests allowed per server instance in the window | Uses 60. |
+| `CONSULTATION_RATE_LIMIT_PER_IP` | Optional. `/api/consultation` requests allowed per IP address in the window | Uses 3. Raise it (for example to 10) in `.env.local` before running `scripts/verify-deep-consultation.ts`, which asks for 8 chapters. |
+| `CONSULTATION_RATE_LIMIT_GLOBAL` | Optional. `/api/consultation` requests allowed per server instance in the window | Uses 20. |
+
+Limit values must be whole numbers of 1 or more; anything else falls back to the default.
+
+### AI request protection
+
+The two routes that call Gemini (`/api/reading`, `/api/consultation`) have two simple guards in front of them, so that strangers cannot easily spend the project's Gemini credits:
+
+- **Same-site check**: a request sent by a browser from another website gets HTTP 403 (`forbidden_origin`). Requests from this site, its Vercel preview addresses and `localhost` are allowed. Requests that carry no browser origin information at all (for example `curl` or scripts) are not blocked by this check; only the request limit below applies to them.
+- **Request limit**: requests that pass input checks are counted per IP address and per server instance. Over the limit, the route returns HTTP 429 (`too_many_requests`) with a `Retry-After` header, before any Gemini call. The page then shows "요청이 많아 잠시 쉬어 갑니다. N분 뒤에 다시 시도해 주세요." instead of a reading; it never shows a made-up reading.
+
+These counters live in each server's memory. Vercel can run several copies of the server and restart them at any time, so the limit is a best effort, not an exact global limit. For a real global limit, the project owner should also add a rate-limit rule for `/api/reading` and `/api/consultation` in the Vercel dashboard (Firewall).
 
 ## Folder map
 
@@ -69,6 +85,7 @@ Copy `.env.example` to `.env.local` and fill in what you need. Never commit real
 │       └── consultation/  Chapter-by-chapter consultation API (not shown in the current UI)
 ├── lib/
 │   ├── saju/            Saju calculation, local readings, AI prompts and response checks
+│   ├── request-guard*.ts Same-site check and request limits for the AI routes
 │   ├── account/         Saving and loading results in the user's account
 │   └── supabase/        Supabase browser client
 ├── supabase/migrations/ Database table and owner-only access rules

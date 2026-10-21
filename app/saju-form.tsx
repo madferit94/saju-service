@@ -17,6 +17,7 @@ import { calculateBenefactors, type Benefactor } from "../lib/saju/benefactors";
 import { validateGeminiSajuReading, type GeminiSajuReading } from "../lib/saju/gemini-reading";
 import { validateReadingSummary, type ReadingSummary } from "../lib/saju/reading-summary";
 import { ReadingSession, readingSessionKey } from "../lib/saju/reading-session";
+import { requestBlockedMessage } from "../lib/request-guard-message";
 import { analyzeNatal } from "../lib/saju/deep-analysis";
 import type { Consultation } from "../lib/saju/consultation";
 import DeepAnalysisPanel from "./deep-analysis-panel";
@@ -329,21 +330,26 @@ export default function SajuForm() {
     try {
       if (!cached?.reading && !cached?.summary) {
         setReadingPhase("summary");
+        // 요약 요청이 같은 사이트 확인·요청 수 제한에 막히면 상세 요청도 같은 이유로 막히므로 보내지 않는다 (Spec 047).
+        let blockedMessage: string | null = null;
         try {
           const early = await fetch("/api/reading", {
             method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", signal: controller.signal,
             body: JSON.stringify({ consent: true, input: requestInput, yunGender: requestGender, fortuneYear, stage: "summary" }),
           });
-          const body = await early.json();
+          const body = await early.json().catch(() => ({}));
           if (ticket !== generation.current || controller.signal.aborted) return;
           if (early.ok) {
             const nextSummary = validateReadingSummary(body.summary);
             readingSession.current.set(key, { summary: nextSummary }); setSummary(nextSummary);
+          } else {
+            blockedMessage = requestBlockedMessage(early.status, body, early.headers?.get?.("Retry-After"));
           }
         } catch {
           if (ticket !== generation.current || controller.signal.aborted) return;
           // The full reading remains available when the optional short response fails.
         }
+        if (blockedMessage) throw new Error(blockedMessage);
       }
       if (ticket !== generation.current || controller.signal.aborted) return;
       setReadingPhase("full");
@@ -354,7 +360,8 @@ export default function SajuForm() {
         cache: "no-store",
         body: JSON.stringify({ consent: true, input: requestInput, yunGender: requestGender, fortuneYear, stage: "full" }),
       });
-      const body = (cached?.reading ? { chart: requestChart, timeline: requestTimeline, benefactors: requestBenefactors, reading: cached.reading } : await response!.json()) as {
+      // 응답 본문이 JSON이 아니어도(예: 플랫폼의 요청 제한 페이지) 실패 응답이면 아래에서 안내 문구로 처리한다.
+      const body = (cached?.reading ? { chart: requestChart, timeline: requestTimeline, benefactors: requestBenefactors, reading: cached.reading } : await response!.json().catch((error: unknown) => { if (response!.ok) throw error; return {}; })) as {
         chart?: SajuChart;
         timeline?: DaewoonTimeline;
         benefactors?: Benefactor[];
@@ -362,7 +369,10 @@ export default function SajuForm() {
         error?: { message?: string };
       };
       if (ticket !== generation.current) return;
-      if (response && !response.ok) throw new Error(body.error?.message || "Gemini 해석을 만들지 못했습니다. 다시 시도해 주세요.");
+      if (response && !response.ok) {
+        throw new Error(requestBlockedMessage(response.status, body, response.headers?.get?.("Retry-After"))
+          || body.error?.message || "Gemini 해석을 만들지 못했습니다. 다시 시도해 주세요.");
+      }
       if (!body.chart || !body.timeline || !body.benefactors || !body.reading) {
         throw new Error("Gemini 해석 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
       }
