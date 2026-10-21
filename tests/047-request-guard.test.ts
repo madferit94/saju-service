@@ -195,20 +195,27 @@ test("consultation 기본값은 IP당 3건·전체 20건이다", () => {
   assert.equal(global.take(req({ "x-forwarded-for": "10.0.1.1" }))?.status, 429);
 });
 
-test("환경변수: 1 이상의 정수만 쓰고 0·음수·소수·문자·빈 값·상한 초과는 기본값", () => {
+test("환경변수: 공백을 뺀 10진 정수(^[1-9][0-9]*$)만 쓰고 그 밖은 기본값, 상한을 넘으면 상한으로 줄인다", () => {
   const read = (value: string | undefined) => aiRateLimitConfig("reading", { READING_RATE_LIMIT_PER_IP: value }).perIp;
   assert.equal(read("8"), 8);
-  assert.equal(read(" 9 "), 9);
+  assert.equal(read(" 9 "), 9, "앞뒤 공백은 뺀다");
+  assert.equal(read("\t12\n"), 12);
   assert.equal(read("10000"), 10_000, "IP 상한 10,000");
-  for (const bad of [undefined, "", "  ", "0", "-3", "2.5", "abc", "10001", "Infinity", "NaN"]) assert.equal(read(bad), 6, String(bad));
+  assert.equal(read("10001"), 10_000, "상한 초과는 상한으로");
+  assert.equal(read("99999999999999999999999"), 10_000, "아주 큰 수도 상한으로");
+  for (const bad of [undefined, "", "  ", "0", "00", "-3", "2.5", "5.0", "1e1", "0x10", "010", "+5", "abc", "5abc", "1 2", "Infinity", "NaN", "５"]) {
+    assert.equal(read(bad), 6, `기본값: ${JSON.stringify(bad)}`);
+  }
   const window = (value: string) => aiRateLimitConfig("reading", { AI_RATE_LIMIT_WINDOW_SECONDS: value }).windowMs;
   assert.equal(window("120"), 120_000);
   assert.equal(window("86400"), 86_400_000);
-  assert.equal(window("86401"), 600_000);
+  assert.equal(window("86401"), 86_400_000, "창 상한 86,400초");
   assert.equal(window("0"), 600_000);
+  assert.equal(window("1e3"), 600_000);
   const global = (value: string) => aiRateLimitConfig("consultation", { CONSULTATION_RATE_LIMIT_GLOBAL: value }).global;
   assert.equal(global("100000"), 100_000);
-  assert.equal(global("100001"), 20);
+  assert.equal(global("100001"), 100_000, "전체 상한 100,000");
+  assert.equal(global("0x10"), 20);
   assert.equal(aiRateLimitConfig("consultation", { CONSULTATION_RATE_LIMIT_PER_IP: "10" }).perIp, 10);
   assert.equal(aiRateLimitConfig("reading", { CONSULTATION_RATE_LIMIT_PER_IP: "10" }).perIp, 6, "다른 경로의 변수는 쓰지 않는다");
   assert.equal(aiRateLimitConfig("reading", { READING_RATE_LIMIT_GLOBAL: "7" }).global, 7);

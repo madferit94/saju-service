@@ -119,6 +119,48 @@ test("reading: 입력 형식 오류는 세지 않고 한도에 걸린 뒤에도 
   assert.equal(api.calls.length, 6);
 });
 
+test("reading: 날짜가 잘못되었거나 출생지가 없는 요청은 세지 않고 Gemini도 부르지 않는다", async () => {
+  const api = routeHarness("reading");
+  const invalid = [
+    { ...readingBody, input: { ...input, date: "2000-13-45" } },
+    { ...readingBody, input: { ...input, time: "25:99" } },
+    { ...readingBody, input: { ...input, birthplace: undefined } },
+  ];
+  for (let round = 0; round < 4; round++) {
+    for (const value of invalid) {
+      const response = await api.post(value, { "x-forwarded-for": "198.51.100.40" });
+      assert.equal(response.status, 400);
+      assert.equal((await json(response)).error?.code, "invalid_input");
+    }
+  }
+  assert.equal(api.calls.length, 0, "잘못된 입력은 Gemini를 부르지 않는다");
+  for (let i = 0; i < 6; i++) {
+    const response = await api.post(readingBody, { "x-forwarded-for": "198.51.100.40" });
+    assert.notEqual(response.status, 429, `잘못된 입력 12건 뒤 ${i + 1}번째 정상 요청`);
+  }
+  assert.equal(api.calls.length, 6);
+  assert.equal((await api.post(readingBody, { "x-forwarded-for": "198.51.100.40" })).status, 429);
+  const after = await api.post(invalid[0], { "x-forwarded-for": "198.51.100.40" });
+  assert.equal(after.status, 400, "한도에 걸린 뒤에도 잘못된 입력은 400");
+  assert.equal(api.calls.length, 6);
+});
+
+test("reading: 키가 없을 때 잘못된 입력은 400(503 아님), 정상 입력은 6번 503 뒤 7번째 429", async () => {
+  const api = routeHarness("reading", {});
+  for (let i = 0; i < 5; i++) {
+    const bad = await api.post({ ...readingBody, input: { ...input, date: "2000-13-45" } });
+    assert.equal(bad.status, 400);
+    assert.equal((await json(bad)).error?.code, "invalid_input");
+    const noPlace = await api.post({ ...readingBody, input: { ...input, birthplace: undefined } });
+    assert.equal(noPlace.status, 400);
+  }
+  for (let i = 0; i < 6; i++) assert.equal((await api.post(readingBody)).status, 503);
+  const blocked = await api.post(readingBody);
+  assert.equal(blocked.status, 429);
+  assert.equal((await json(blocked)).error?.code, "too_many_requests");
+  assert.equal(api.calls.length, 0);
+});
+
 test("reading: API 키가 없어도 요청 수 제한은 먼저 적용된다(6번 503 뒤 429)", async () => {
   const api = routeHarness("reading", {});
   for (let i = 0; i < 6; i++) {
