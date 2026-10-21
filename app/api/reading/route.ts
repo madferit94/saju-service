@@ -66,18 +66,18 @@ export async function POST(request: Request) {
     return failure(400, "invalid_input", "살펴볼 연도는 1990~2100년을 선택해주세요.");
   }
 
-  // 입력 형식이 맞는 요청만 세고, Gemini 호출·키 확인 전에 요청 수를 제한한다.
-  const limited = rateLimiter.take(request);
-  if (limited) return guardFailureResponse(limited);
-
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) {
-    return failure(503, "missing_api_key", "Gemini API 키가 설정되지 않았습니다. 서버 설정을 확인해 주세요.");
-  }
-
   try {
     const input = validateInput(body.input as unknown as SajuInput);
     if (!input.birthplace) return failure(400, "invalid_input", "태어난 국가와 도시를 선택해 주세요.");
+
+    // 출생 입력까지 검사를 통과한 요청만 세고, API 키 확인·Gemini 호출 전에 요청 수를 제한한다 (Spec 047).
+    const limited = rateLimiter.take(request);
+    if (limited) return guardFailureResponse(limited);
+
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return failure(503, "missing_api_key", "Gemini API 키가 설정되지 않았습니다. 서버 설정을 확인해 주세요.");
+    }
     const gender = body.yunGender as YunGender;
     const chart = calculate(input);
     const timeline = calculateDaewoon(input, gender);

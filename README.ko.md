@@ -62,7 +62,7 @@ npm run build   # 배포용 빌드
 | `CONSULTATION_RATE_LIMIT_PER_IP` | 선택. 시간 창 안에서 IP 하나가 보낼 수 있는 `/api/consultation` 요청 수 | 3을 씁니다. 8장을 만드는 `scripts/verify-deep-consultation.ts`를 돌릴 때는 `.env.local`에서 10 정도로 올립니다. |
 | `CONSULTATION_RATE_LIMIT_GLOBAL` | 선택. 시간 창 안에서 서버 인스턴스 하나가 받을 수 있는 `/api/consultation` 요청 수 | 20을 씁니다. |
 
-제한값은 1 이상의 정수만 인정하며, 그 밖의 값은 기본값으로 처리합니다.
+제한값은 1 이상의 10진 정수(예: `10`)만 인정합니다. `1e1`, `0x10`, `5.0`, `0`, 음수 같은 값은 기본값으로 처리하고, 상한(시간 창 86400초, IP별 10000, 인스턴스 전체 100000)을 넘는 값은 상한으로 줄입니다.
 
 ### AI 요청 보호
 

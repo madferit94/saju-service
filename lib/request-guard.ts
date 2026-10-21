@@ -143,10 +143,11 @@ export class SlidingWindowLimiter {
   }
 }
 
+/** 앞뒤 공백을 뺀 값이 1 이상의 10진 정수(`^[1-9][0-9]*$`)일 때만 쓴다. `1e1`·`0x10`·`5.0` 등은 기본값, 상한을 넘으면 상한으로 줄인다. */
 function positiveInt(value: string | undefined, fallback: number, max: number): number {
-  if (value === undefined || value.trim() === "") return fallback;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 1 && parsed <= max ? parsed : fallback;
+  const text = value?.trim();
+  if (!text || !/^[1-9][0-9]*$/.test(text)) return fallback;
+  return Math.min(Number(text), max);
 }
 
 export type AiRouteName = "reading" | "consultation";
@@ -158,7 +159,7 @@ const DEFAULTS: Record<AiRouteName, { perIp: number; global: number }> = {
 
 export type AiRateLimitConfig = { windowMs: number; perIp: number; global: number };
 
-/** 환경변수에서 제한값을 읽는다. 값이 없거나 1 이상의 정수가 아니면 기본값을 쓴다. */
+/** 환경변수에서 제한값을 읽는다. 값이 없거나 1 이상의 10진 정수가 아니면 기본값, 상한(창 86,400초·IP 10,000·전체 100,000)을 넘으면 상한을 쓴다. */
 export function aiRateLimitConfig(route: AiRouteName, env: Env): AiRateLimitConfig {
   const prefix = route === "reading" ? "READING" : "CONSULTATION";
   return {

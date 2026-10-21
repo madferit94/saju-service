@@ -13,8 +13,8 @@
 2. 요청 수 제한: 서버 메모리의 슬라이딩 윈도 방식. 이용자 구분은 `x-forwarded-for`의 첫 IP, 없으면 `x-real-ip`, 둘 다 없으면 공통 값 하나.
    - 기본값(10분 창): `/api/reading` IP당 6건·서버 인스턴스 전체 60건, `/api/consultation` IP당 3건·전체 20건.
    - 넘으면 HTTP 429, 오류 코드 `too_many_requests`, `Retry-After`(초) 헤더와 본문 `retryAfterSeconds`. 기존 Gemini 쪽 429의 `rate_limited`와 구분하려고 다른 코드를 쓴다.
-   - 입력 형식 검사를 통과한 요청만 세고, API 키 확인과 Gemini 호출보다 먼저 막는다. 막힌 요청은 세지 않는다.
-   - 선택 환경변수로 바꿀 수 있다: `AI_RATE_LIMIT_WINDOW_SECONDS`, `READING_RATE_LIMIT_PER_IP`, `READING_RATE_LIMIT_GLOBAL`, `CONSULTATION_RATE_LIMIT_PER_IP`, `CONSULTATION_RATE_LIMIT_GLOBAL`. 1 이상의 정수가 아니면 기본값.
+   - 입력 형식 검사(출생 입력 `validateInput`·출생지 확인 포함)를 모두 통과한 요청만 세고, API 키 확인과 Gemini 호출보다 먼저 막는다. 막힌 요청은 세지 않는다. 두 경로의 순서가 같다.
+   - 선택 환경변수로 바꿀 수 있다: `AI_RATE_LIMIT_WINDOW_SECONDS`, `READING_RATE_LIMIT_PER_IP`, `READING_RATE_LIMIT_GLOBAL`, `CONSULTATION_RATE_LIMIT_PER_IP`, `CONSULTATION_RATE_LIMIT_GLOBAL`. 앞뒤 공백을 뺀 값이 `^[1-9][0-9]*$` 형태의 10진 정수일 때만 쓰고(`1e1`·`0x10`·`5.0`·0·음수·문자는 기본값), 상한(창 86,400초, IP별 10,000, 전체 100,000)을 넘으면 상한으로 줄인다(테스트 담당 관찰을 반영한 2026-10-21 팀장 판단).
    - 메모리 제한: 키마다 최근 허용 시각을 최대 한도 수만큼만 기억하고, 창이 지난 키는 지우며, 키가 5,000개를 넘으면 가장 오래 쓰지 않은 키부터 지운다.
 3. 화면: `/api/reading`이 이 보호 장치로 429·403을 돌려주면 일반 오류 대신 한국어 안내를 보여 준다.
    - 429: “요청이 많아 잠시 쉬어 갑니다. N분 뒤에 다시 시도해 주세요.”(N은 `retryAfterSeconds` 또는 `Retry-After`를 분으로 올림, 모르면 “잠시 뒤에”).
@@ -42,7 +42,7 @@
   - `SlidingWindowLimiter`: `retryAfterMs(key)`(기록 없이 확인)와 `record(key)`. 키별 기록은 한도 수만큼만 남기고 창이 지난 키를 정리한다.
   - `aiRateLimitConfig(route, env)`, `createAiRateLimiter(route, env)`: IP별·전체 제한을 함께 확인한 뒤 둘 다 통과할 때만 기록한다(전체 한도에 막힌 요청은 IP별 기록도 남기지 않는다).
   - `guardFailureResponse(failure)`: `{ error: { code, message, retryAfterSeconds? } }`, `Cache-Control: no-store`, 429면 `Retry-After`.
-- `app/api/reading/route.ts`, `app/api/consultation/route.ts`: 모듈에서 제한기를 한 번 만들고, 요청 처음에 같은 사이트 확인, 입력 검사 뒤·API 키 확인 전에 요청 수 제한.
+- `app/api/reading/route.ts`, `app/api/consultation/route.ts`: 모듈에서 제한기를 한 번 만들고, 요청 처음에 같은 사이트 확인, 출생 입력·출생지까지 입력 검사를 마친 뒤·API 키 확인 전에 요청 수 제한.
 - `lib/request-guard-message.ts`(화면용, 서버 코드 없음): `requestBlockedMessage(status, body, retryAfterHeader)`가 보호 장치(또는 코드 없는 429·403)면 한국어 안내, 아니면 `null`.
 - `app/saju-form.tsx`: 요약 응답이 막히면 상세 요청 없이 안내, 상세 응답이 실패하면 `requestBlockedMessage` → 서버 안내 → 기본 안내 순서. 실패 응답이 JSON이 아니어도 안내를 보여 준다. 새 훅은 없다.
 - `.env.example`, `README.md`, `README.ko.md`, `docs/PRD.md`: 환경변수와 보호 장치·한계 설명.
@@ -53,7 +53,8 @@
 - [x] `npm audit`: 0 vulnerabilities.
 - [x] 비밀값 없이 `npm run build` 성공.
 - [x] 로컬 `next start`(비밀값 없음)에서 `curl`로 같은 사이트 통과·다른 사이트 403·7번째 429·상담 4번째 429 확인(아래 기록).
-- [x] 구현을 맡지 않은 서브에이전트의 테스트 작성·보강과 실행(아래 테스트 담당 기록). 발견 1건: `/api/reading`이 출생 정보 검사(`validateInput`·출생지)에 실패한 요청도 센다.
+- [x] 구현을 맡지 않은 서브에이전트의 테스트 작성·보강과 실행(아래 테스트 담당 기록). 발견 1건: `/api/reading`이 출생 정보 검사(`validateInput`·출생지)에 실패한 요청도 센다 → 아래 후속 수정에서 고침.
+- [ ] 후속 수정(입력 검사 순서·환경변수 엄격 파싱)에 대한 테스트 담당의 테스트 보강과 실행 — NOT TESTED. 기존 `tests/047-request-guard.test.ts:198` 환경변수 테스트 1개는 의도적으로 바뀐 동작(상한 초과 → 상한) 때문에 실패하며, 테스트 담당의 갱신이 필요하다.
 - [ ] 실제 브라우저에서 429·403 안내 문구와 다시 시도 버튼 확인 — 헤드리스 Chrome에서 응답 가로채기로 확인 통과(아래 기록). 실제 서버의 보호 장치가 낸 응답을 브라우저로 받아 본 확인과 사람의 화면 확인은 아직.
 - [ ] Vercel 미리보기·운영 주소에서 같은 사이트 요청 통과 확인(배포는 이번 범위가 아님) — NOT TESTED.
 - [ ] Vercel Firewall 요청 수 제한 규칙 추가(소유자 작업) — 하지 않음.
@@ -109,3 +110,14 @@
   - 요약 403 → 새로 고침 안내, 상세 없음. HTML 429(`Retry-After: 30`) → “1분”, 상세 없음.
   - 요약 Gemini `rate_limited` → 상세 진행 → 상세 HTML 429(`Retry-After: 120`) → “2분”. 요약 502 → 상세 빈 본문 403 → 새로 고침 안내.
 - NOT TESTED: 실제 서버의 보호 장치가 낸 429·403을 브라우저로 받아 본 화면(가로챈 응답만 확인), 사람의 화면·스크린리더 확인, 실제 모바일 기기, Vercel 미리보기·운영 주소(같은 사이트 요청 통과, `x-forwarded-for` 처리, 여러 인스턴스), Vercel Firewall 규칙, `scripts/verify-deep-consultation.ts` 실제 실행.
+
+## 후속 수정: 입력 오류 요청 집계와 환경변수 파싱 (2026-10-21, 구현 담당)
+- 근거: 테스트 담당이 `/api/reading`에서 잘못된 날짜 요청 6번(모두 400 `invalid_input`) 뒤 정상 요청이 바로 429가 되는 것을 확인했다. 제한기가 `validateInput`·출생지 확인보다 앞에 있었다(consultation과 순서도 달랐다).
+- 수정(`app/api/reading/route.ts`): 출생 입력 검사(`validateInput`)와 출생지 확인을 먼저 하고, 통과한 요청만 `rateLimiter.take`로 센 다음 API 키를 확인한다. 이제 두 경로의 순서가 같다. 그 결과 API 키가 없을 때 잘못된 출생 입력은 503 대신 400 `invalid_input`을 받는다(consultation과 같은 동작). Gemini 지시문·호출·응답 형식은 그대로다.
+- 수정(`lib/request-guard.ts` 환경변수, 팀장 판단 반영): 앞뒤 공백을 뺀 값이 `^[1-9][0-9]*$`일 때만 쓰고, 상한을 넘으면 기본값 대신 상한으로 줄인다. `.env.example`, `README.md`, `README.ko.md`, 이 Spec 요구사항 2를 같은 내용으로 고쳤다.
+- 명령과 결과:
+  - `npm run check`: tests 342, pass 341, fail 1. 실패는 `tests/047-request-guard.test.ts:198` “환경변수: … 상한 초과는 기본값” 하나뿐이다(`"10001"` → 실제 10000, 테스트 기대 6). 상한 초과를 상한으로 줄이도록 동작을 일부러 바꿨기 때문이며, 지시에 따라 테스트 파일은 고치지 않았다. 같은 테스트의 `"86401"`(→ 86,400초)·`"100001"`(→ 100,000) 기대값도 함께 갱신이 필요하다. 나머지 341개는 통과(입력 검사 순서 변경으로 깨진 테스트 없음).
+  - `npx tsc --noEmit --noUnusedLocals`: 오류 없음(exit 0). 비밀값 없이 `npm run build`: 성공.
+  - 임시 스크립트(저장소 밖): `"8"`→8, `" 9 "`→9, `"1e1"`·`"0x10"`·`"5.0"`·`"010"`·`"+5"`·`"0"`·`"-3"`·`"2.5"`→기본값 6, `"10001"`·`"99999999999999999999"`→10000, 창 `"86401"`→86,400초, consultation 전체 `"100001"`→100,000.
+  - 로컬 `next start -p 3047`(비밀값 없음) + `curl`, `Origin: http://localhost:3047`: 잘못된 날짜(`2000-13-45`) 6번 → 모두 400 `invalid_input`, 출생지 없는 입력 3번 → 모두 400 `invalid_input`, 이어서 정상 입력 1~6번 → 503 `missing_api_key`(429 아님), 7번째 → 429 `too_many_requests`, `retry-after: 600`. 서버는 PID로 종료하고 포트가 비었음을 확인했다.
+- NOT TESTED: 이 후속 수정에 대한 테스트 담당의 독립 테스트, 실제 브라우저 화면.

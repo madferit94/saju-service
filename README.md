@@ -62,7 +62,7 @@ Copy `.env.example` to `.env.local` and fill in what you need. Never commit real
 | `CONSULTATION_RATE_LIMIT_PER_IP` | Optional. `/api/consultation` requests allowed per IP address in the window | Uses 3. Raise it (for example to 10) in `.env.local` before running `scripts/verify-deep-consultation.ts`, which asks for 8 chapters. |
 | `CONSULTATION_RATE_LIMIT_GLOBAL` | Optional. `/api/consultation` requests allowed per server instance in the window | Uses 20. |
 
-Limit values must be whole numbers of 1 or more; anything else falls back to the default.
+Limit values must be plain decimal whole numbers of 1 or more (for example `10`). Values such as `1e1`, `0x10`, `5.0`, `0` or negative numbers fall back to the default. Values above the maximum (window 86400 seconds, per IP 10000, per instance 100000) are reduced to the maximum.
 
 ### AI request protection
 
