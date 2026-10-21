@@ -145,7 +145,7 @@ export function sajuFormHarness(options: HarnessOptions = {}) {
   const scrollTo: unknown[] = [];
   const timers: (() => void)[] = [];
   const requests: { url: string; body: Record<string, unknown> | null; signal?: AbortSignal }[] = [];
-  const pending: ((response: unknown) => void)[] = [];
+  const pending: { resolve: (response: unknown) => void; reject: (error: unknown) => void }[] = [];
   const window = {
     location: { href: "http://localhost:3000/" },
     innerHeight: options.viewportHeight ?? 720,
@@ -184,7 +184,7 @@ export function sajuFormHarness(options: HarnessOptions = {}) {
       requests.push({ url, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
       if (url.startsWith("/api/locations?countries=1")) return Promise.resolve({ ok: true, json: async () => ({ countries: [] }) });
       if (url.startsWith("/api/locations?country=")) return Promise.resolve({ ok: true, json: async () => ({ cities: options.cities ?? [] }) });
-      return new Promise((resolve) => { pending.push(resolve); });
+      return new Promise((resolve, reject) => { pending.push({ resolve, reject }); });
     },
     setTimeout: (callback: () => void) => { timers.push(callback); return timers.length; },
     clearTimeout() {},
@@ -240,10 +240,29 @@ export function sajuFormHarness(options: HarnessOptions = {}) {
     },
     async respondAll(body: unknown, ok: boolean) {
       for (let guard = 0; guard < 5 && pending.length; guard++) {
-        pending.shift()!({ ok, json: async () => body });
+        pending.shift()!.resolve({ ok, json: async () => body });
         await new Promise((resolve) => setImmediate(resolve));
       }
       render();
     },
+    /** 기다리는 가장 오래된 요청 하나에 응답 객체(status·headers 포함 가능)를 그대로 돌려준다. */
+    async respondNext(response: unknown) {
+      const next = pending.shift();
+      if (!next) throw new Error("기다리는 요청이 없습니다");
+      next.resolve(response);
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      render();
+    },
+    /** 기다리는 가장 오래된 요청을 네트워크 오류로 끝낸다. */
+    async rejectNext(error: unknown) {
+      const next = pending.shift();
+      if (!next) throw new Error("기다리는 요청이 없습니다");
+      next.reject(error);
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      render();
+    },
+    get pendingCount() { return pending.length; },
   };
 }

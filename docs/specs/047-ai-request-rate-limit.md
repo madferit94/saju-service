@@ -53,8 +53,8 @@
 - [x] `npm audit`: 0 vulnerabilities.
 - [x] 비밀값 없이 `npm run build` 성공.
 - [x] 로컬 `next start`(비밀값 없음)에서 `curl`로 같은 사이트 통과·다른 사이트 403·7번째 429·상담 4번째 429 확인(아래 기록).
-- [ ] 구현을 맡지 않은 서브에이전트의 테스트 작성·보강과 실행 — NOT TESTED(이 기록 시점).
-- [ ] 실제 브라우저에서 429·403 안내 문구와 다시 시도 버튼 확인 — NOT TESTED.
+- [x] 구현을 맡지 않은 서브에이전트의 테스트 작성·보강과 실행(아래 테스트 담당 기록). 발견 1건: `/api/reading`이 출생 정보 검사(`validateInput`·출생지)에 실패한 요청도 센다.
+- [ ] 실제 브라우저에서 429·403 안내 문구와 다시 시도 버튼 확인 — 헤드리스 Chrome에서 응답 가로채기로 확인 통과(아래 기록). 실제 서버의 보호 장치가 낸 응답을 브라우저로 받아 본 확인과 사람의 화면 확인은 아직.
 - [ ] Vercel 미리보기·운영 주소에서 같은 사이트 요청 통과 확인(배포는 이번 범위가 아님) — NOT TESTED.
 - [ ] Vercel Firewall 요청 수 제한 규칙 추가(소유자 작업) — 하지 않음.
 
@@ -74,3 +74,38 @@
 - 서버는 PID로 종료하고 포트 3047이 비었음을 확인했다.
 - 별도 임시 스크립트(저장소 밖)로 확인: 한도 직후 창이 지나면 다시 허용, 전체 한도 60, `maxKeys` 3에서 키 10개를 기록해도 3개만 유지, 잘못된 환경변수는 기본값, 출처 판정(운영 주소 허용, 다른 사이트·`null`·`cross-site` 거절, 운영 모드의 다른 포트 localhost 거절·개발 모드 허용, `VERCEL_BRANCH_URL` 허용), 화면 안내 문구(61초 → 2분, 헤더 30초 → 1분, Gemini `rate_limited` → `null`, `missing_api_key` → `null`).
 - NOT TESTED: 실제 브라우저 화면, 독립 테스트, Vercel 배포 환경, 여러 인스턴스에서의 동작.
+
+## 검증 기록 (2026-10-21, 테스트 담당 서브에이전트 — 구현에 참여하지 않음)
+- 추가한 테스트 33개, 기존 테스트는 고치지 않았다.
+  - `tests/047-request-guard.test.ts` 16개(단위)
+    - 출처 판정: 자기 Host·요청 URL(대소문자 무시, 포트 다르면 거절), 운영 주소, `VERCEL_URL`·`VERCEL_BRANCH_URL`·`VERCEL_PROJECT_PRODUCTION_URL`(https만, `https://` 붙은 값도 인식, 비슷한 이름 거절), localhost·127.0.0.1·[::1]의 다른 포트는 개발(`NODE_ENV` 없음 포함)만 허용·운영 거절.
+    - `Origin: null`·잘못된 값·`file:`·`chrome-extension:`·`ftp:` 거절, Origin이 있으면 Sec-Fetch-Site보다 우선, Sec-Fetch-Site `same-origin`·`none`(공백·대소문자 무시)만 허용·`cross-site`·`same-site`·기타 거절, 헤더 둘 다 없으면 통과.
+    - `clientKey`: x-forwarded-for 첫 IP → x-real-ip(첫 칸이 비었을 때 포함) → `unknown`, 64자 자르기, 소문자.
+    - 슬라이딩 창: 한도까지 허용, `retryAfterMs` 경계(창 끝 1ms 전 1, 첫 기록+창 시각에 0), 확인만 하면 기록 없음, 창이 지나면 재허용·빈 키 삭제, 키별 기록은 한도 수만, `maxKeys` 초과 시 가장 오래 쓰지 않은 키부터 삭제, 창이 지난 키 정리.
+    - IP별+전체: reading 기본 6/60·10분, consultation 3/20, 남은 초·분 올림(61초 → 2분, 1초 미만 → 1초·1분), 전체 한도에 막힌 요청은 IP 기록을 남기지 않고 IP 한도에 막힌 요청은 전체 기록을 남기지 않음.
+    - 환경변수: 0·음수·소수(2.5)·문자·빈 값·공백·`Infinity`·`NaN`·상한 초과(창 86,401초, IP 10,001, 전체 100,001)는 기본값, 앞뒤 공백 있는 정수와 상한값은 사용, 다른 경로 변수는 쓰지 않음.
+    - `guardFailureResponse`: 429는 `Retry-After`·`no-store`·JSON·`retryAfterSeconds`, 403은 `Retry-After`·`retryAfterSeconds` 없음.
+    - `requestBlockedMessage`: 본문 초 우선·헤더 초 사용·날짜 형식 헤더와 음수는 “잠시”, JSON 아닌 429·코드 없는 403 안내, `rate_limited`·`missing_api_key`·`invalid_api_key`·502·예전 mock은 `null`.
+  - `tests/047-route-guard.test.ts` 10개(기존 035·consultation-api 방식으로 라우트 파일을 테스트마다 새로 실행, 가짜 Gemini 호출 수 확인)
+    - 두 경로 모두 다른 사이트(`Origin` 다른 사이트·`null`, Sec-Fetch-Site `cross-site`·`same-site`)는 403 `forbidden_origin`·`no-store`·Gemini 0회. 깨진 본문이어도 403(본문을 읽기 전). 막힌 요청은 세지 않음.
+    - 같은 사이트(Origin 자기 주소, `same-origin`, `none`)와 헤더 없는 요청은 통과.
+    - reading: IP당 6건 Gemini 호출 뒤 7번째 429·Gemini 0회·`Retry-After` 595–600초·본문 `retryAfterSeconds` 일치·10분 안내. 다른 IP는 따로, 요약·상세는 같은 한도.
+    - reading: 입력 오류 7종(잘못된 JSON, 24,000자 초과, 동의 없음, 계산 기준, input 형식, stage, 연도)을 21번 보내도 세지 않고, 한도 뒤에도 입력 오류는 원래 400.
+    - reading: 키가 없어도 6번 503 뒤 7번째 429. 환경변수(IP 2·전체 3·120초) 반영.
+    - consultation: 3번(각 Gemini 2회) 뒤 4번째 429·Gemini 0회. 기존 오류 형식 `{error:{message}}`(code 없음) 유지, 상담 주제 오류·출생지 없음은 세지 않음, 키 없음 503 문구 그대로.
+    - 라우트를 다시 불러오면 제한기가 초기화되고 reading과 consultation은 따로 센다.
+  - `tests/047-guard-ui.test.ts` 7개(실제 `app/saju-form.tsx`, `tests/helpers/saju-form-harness.ts`에 상태·헤더가 있는 응답과 네트워크 오류 흉내를 추가)
+    - 요약 429 `too_many_requests` → 상세 요청 0건, `role="alert"` 안내 “2분”, 누를 수 있는 “Gemini 해석 다시 시도” 버튼, 가짜 풀이·요약 없음, 사주표 유지, 저장본 풀이 `null`. 다시 시도하면 요약부터 다시 요청.
+    - 요약 403 `forbidden_origin` → 상세 0건, 새로 고침 안내. JSON 아닌 요약 429(헤더 30초 → 1분, 헤더 없음 → 잠시)·403도 같은 처리.
+    - Gemini 쪽 요약 실패(429 `rate_limited`, 502, 503 2종, 네트워크 오류)는 기존처럼 상세 진행, 상세의 Gemini 429는 서버 문구 그대로.
+    - 상세 429(본문 600초 → 10분, 헤더 125초 → 3분, JSON 아님 59초 → 1분, 정보 없음 → 잠시)·403(JSON·JSON 아님)은 보호 장치 안내가 서버 문구보다 우선, JSON 아닌 502는 기본 문구, 503 키 없음은 서버 문구.
+    - 상태·헤더 없는 예전 mock은 기존대로 상세 진행·서버 문구, 코드가 `too_many_requests`면 상태 없이도 안내. 성공한 요약이 JSON이 아니어도 상세 진행.
+- 테스트가 실제로 잡는지 확인(구현을 잠시 바꿨다가 `git checkout`으로 원복, 8가지 모두 실패로 잡음): `same-site` 허용, 배포 주소 http 허용, IP 기록을 전체 확인 전에 남김, 본문 읽기 전에 세기, 요약 차단 무시, 코드 없는 429 무시, 상담 제한 제거, `Retry-After` 제거.
+- 발견한 문제(구현은 고치지 않음): `/api/reading`은 요청 수 제한(`rateLimiter.take`)을 `validateInput`·출생지 검사보다 먼저 한다. 그래서 날짜가 잘못되었거나 출생지가 없는 요청(400 `invalid_input`)도 한도에 들어간다. 증거(임시 스크립트, 키 있음): 잘못된 날짜(`2000-13-45`) 요청 6번 → 모두 400 `invalid_input`, 이어서 정상 입력 → 429 `too_many_requests`. 출생지 없는 요청 6번도 같은 결과. 요구사항 2의 “입력 형식 검사를 통과한 요청만 세고”와 다르고, `/api/consultation`은 같은 검사 뒤에 센다. 화면은 계산을 먼저 하므로 일반 이용자에게는 드물고, Gemini 비용도 생기지 않는다. 다만 직접 만든 요청이 IP별·전체 한도를 Gemini 비용 없이 쓸 수 있다. 위 테스트에는 이 경우를 넣지 않았다(구현 결정 뒤 추가 필요).
+- 관찰(판단 필요, 버그로 보지 않음): 환경변수는 `Number()`로 읽어 `"1e1"`(10)·`"0x10"`(16)·`"5.0"`(5)도 정수로 받아들인다. 상한을 넘는 값은 상한으로 줄이지 않고 기본값으로 돌아간다.
+- 명령과 결과: `npm run check` 변경 전 309 / 309 → 추가 후 tests 342 / pass 342 / fail 0. `npx tsc --noEmit --noUnusedLocals` 오류 없음. `npm audit` 0 vulnerabilities. 비밀값 없이 `npm run build` 성공.
+- 실제 브라우저(Playwright + 헤드리스 Chrome, `next start` 비밀값 없음): 화면에서 출생 정보를 입력하고 “내 사주 보기”를 눌렀다. `/api/reading`·`/api/consultation` 요청은 모두 브라우저에서 가로채 가짜 응답을 돌려주었고, 실제 서버로 간 AI 요청은 0건이었다(Gemini 호출 없음). 25개 확인 항목 모두 통과.
+  - 요약 429 JSON(600초) → “10분” 안내·상세 요청 없음·`role="alert"`·버튼 사용 가능·가짜 풀이 없음·사주표 유지. 다시 시도 → 요약만 다시 요청, 61초 응답에 “2분”.
+  - 요약 403 → 새로 고침 안내, 상세 없음. HTML 429(`Retry-After: 30`) → “1분”, 상세 없음.
+  - 요약 Gemini `rate_limited` → 상세 진행 → 상세 HTML 429(`Retry-After: 120`) → “2분”. 요약 502 → 상세 빈 본문 403 → 새로 고침 안내.
+- NOT TESTED: 실제 서버의 보호 장치가 낸 429·403을 브라우저로 받아 본 화면(가로챈 응답만 확인), 사람의 화면·스크린리더 확인, 실제 모바일 기기, Vercel 미리보기·운영 주소(같은 사이트 요청 통과, `x-forwarded-for` 처리, 여러 인스턴스), Vercel Firewall 규칙, `scripts/verify-deep-consultation.ts` 실제 실행.
